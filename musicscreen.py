@@ -101,17 +101,23 @@ class ScreenShowApp:
             print(f"显示器尺寸: {self.monitor_true_width}x{self.monitor_true_height}")
         return frame
     
-    def generate_image(self, music_cache_id):
+    def generate_image(self):
         """重新生成当前歌曲的播放器tile和fusion图片"""
         time.sleep(0.5)  # 等待半秒，确保封面文件已更新
         music_info = asyncio.run(get_media_info(get_cover=True))
+        # 生成新的tile图片，并进行fusion处理
         print(f"Get new music cover: {music_info}")
         tile_image = self.global_frame_generator.generate_full_canvas(music_info)
         final_fusion_image = synthesize_fusion_frame(tile_image, device_config)
         # 更新fusion图片到当前显示内容
         self.img_content = final_fusion_image
         # 将final_tile_image加入缓存池
-        self.tile_cache_pool.add_key(music_cache_id, final_fusion_image)
+        self.tile_cache_pool.add_key(generate_cache_id(music_info), final_fusion_image)
+        # 此外再将 反着的播放状态 缓存一份，方便切换播放状态时快速加载
+        music_info["playback_status"] = 0 if music_info.get('playback_status', 1) == 1 else 1
+        tile_image = self.global_frame_generator.generate_full_canvas(music_info)
+        final_fusion_image = synthesize_fusion_frame(tile_image, device_config)
+        self.tile_cache_pool.add_key(generate_cache_id(music_info), final_fusion_image)
         
         
     
@@ -128,7 +134,7 @@ class ScreenShowApp:
         else:
             # 重新生成图片（generate_image内将新图片加入缓存池）
             # 用新的线程运行 global_frame_generator.generate_full_canvas(music_info)
-            gen_thread = threading.Thread(target=self.generate_image, args=(music_cache_id,))
+            gen_thread = threading.Thread(target=self.generate_image)
             gen_thread.start()
 
 
@@ -154,11 +160,7 @@ class ScreenShowApp:
 
             # 获取当前播放歌曲(封面先不获取)
             music_info = asyncio.run(get_media_info(get_cover=False))
-            music_cache_id = generate_cache_id(
-                music_info.get('title', ''),
-                music_info.get('artist', ''),
-                music_info.get('playback_status', 'Stopped')
-            )
+            music_cache_id = generate_cache_id(music_info)
             if music_cache_id != self.now_cache_id:
                 self.on_music_updated(music_cache_id)
                 

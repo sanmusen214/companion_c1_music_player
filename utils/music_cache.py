@@ -11,8 +11,15 @@ def simple_hash(s):
     hash_b64 = base64.urlsafe_b64encode(hash_bytes).decode('utf-8').rstrip('=')
     return hash_b64
 
-def generate_cache_id(name, artist, playback_status):
+def generate_cache_id(name_or_dict, artist=None, playback_status=None):
     """生成音乐的tile的唯一ID"""
+    # 如果 name_or_dict 是字典，则提取所需字段
+    if isinstance(name_or_dict, dict) and artist is None and playback_status is None:
+        name = name_or_dict.get('title', '')
+        artist = name_or_dict.get('artist', '')
+        playback_status = name_or_dict.get('playback_status', 1)
+    else:
+        name = name_or_dict
     return f"{simple_hash(name)}{simple_hash(artist)}{playback_status}"
     
 class MusicCachePool:

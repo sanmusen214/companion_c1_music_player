@@ -23,19 +23,26 @@ class MusicPlayerGenerator:
         # 字体设置：黑体
         self.font_path = "simhei.ttf" 
 
-    def _draw_controls(self, draw, center_x, center_y, color="white"):
+    def _draw_controls(self, draw, center_x, center_y, color=(220, 220, 220, 200)):
         """绘制几何控制图标"""
         side = 50 # 按钮图标正方形边长
         s = side // 2
         pn_width = 40 # 上一首下一首按钮三角宽度
         pn_ar_w = side - pn_width # 上一首下一首按钮矩形宽度
         gap = 120 # 播放按钮与上一首下一首的间隔
+        pause_w = 10 # 暂停按钮单个矩形宽度
         # 上一首
         lx = center_x - gap
         draw.polygon([(lx, center_y), (lx+pn_width, center_y-s), (lx+pn_width, center_y+s)], fill=color)
         draw.rectangle([lx-pn_ar_w, center_y-s, lx, center_y+s], fill=color)
-        # 播放
-        draw.polygon([(center_x-s, center_y-s), (center_x-s, center_y+s), (center_x+s+5, center_y)], fill=color)
+        is_playing = self.info.get("playback_status", 0) == 1
+        if is_playing:
+            # 播放
+            draw.polygon([(center_x-s, center_y-s), (center_x-s, center_y+s), (center_x+s, center_y)], fill=color)
+        else:
+            # 暂停
+            draw.rectangle([center_x - s, center_y - s, center_x - s + pause_w, center_y + s], fill=color)
+            draw.rectangle([center_x + s - pause_w, center_y - s, center_x + s, center_y + s], fill=color)
         # 下一首
         rx = center_x + gap
         draw.polygon([(rx, center_y), (rx-pn_width, center_y-s), (rx-pn_width, center_y+s)], fill=color)
@@ -46,7 +53,7 @@ class MusicPlayerGenerator:
         # --- 标题自适应逻辑开始 ---
         title = self.info.get('title', 'Unknown Title')
         max_width = int(self.sub_w * 0.85)  # 设置最大允许宽度为画布的 85%
-        current_font_size = 120             # 初始字号
+        current_font_size = 100             # 初始字号
         min_font_size = 60                  # 最小允许字号
         
         # 1. 动态缩小字号
