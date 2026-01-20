@@ -2,11 +2,13 @@ from winsdk.windows.media.control import GlobalSystemMediaTransportControlsSessi
 from winsdk.windows.storage.streams import Buffer, InputStreamOptions
 from winsdk.windows.media.control import GlobalSystemMediaTransportControlsSessionPlaybackStatus
 from datetime import datetime, timezone
-
+import requests
 
 async def get_media_info(get_cover=True):
     """
     获取当前windows系统正在播放的音乐的信息
+
+    title,artist,playback_status
     """
     info_dict = {}
     # 获取会话管理器
@@ -74,14 +76,46 @@ async def get_media_info(get_cover=True):
 import os
 appdata_path = os.getenv('APPDATA')
 cloud_webdata_path = os.path.join(appdata_path, '../Local/NetEase/CloudMusic/webdata/file')
+# https://api.injahow.cn/meting/
 
-def download_cover_image(song_id, req_server="netease"):
-    # 遍历云音乐的 webdata 目录，打印所有文件名
-    possible_paths = []
-    # print(cloud_webdata_path)
-    for root, dirs, files in os.walk(cloud_webdata_path):
-        for file in files:
-            print(f"Found file: {file}")
+def get_netease_id(music_info):
+    keyword = f"{music_info.get('title', '')}-{music_info.get('artist', '')}"
+    url = f"http://music.163.com/api/search/get/web?csrf_token=&hlpretag=&hlposttag=&s={keyword}&type=1&offset=0&total=true&limit=10"
+    res = requests.get(url)
+    if res.status_code != 200:
+        return None
+    result = res.json()
+    if "result" not in result or "songs" not in result["result"] or len(result["result"]["songs"]) == 0:
+        return None
+    return result["result"]["songs"][0]["id"]
 
-if __name__ == "__main__":
-    download_cover_image("1234567890")
+def download_cover_image(song_id):
+    url = f"https://api.injahow.cn/meting/?type=song&id={song_id}"
+    res = requests.get(url)
+    if res.status_code != 200:
+        return None
+    # 得到封面图接口链接
+    picurl = res.json()[0]['pic']
+    res = requests.get(picurl)
+    if res.status_code != 200:
+        return None
+    # 得到最终封面图图片链接
+    final_pic_url = res.url.split("?param")[0] + "?param=300y300"
+    # 下载封面图
+    res = requests.get(final_pic_url)
+    if res.status_code != 200:
+        return None
+    picpath = "cover.jpg"
+    with open(picpath, "wb") as f:
+        f.write(res.content)
+    return picpath
+
+def download_cover_image_from_keyword(music_info):
+    try:
+        song_id = get_netease_id(music_info)
+        picpath = download_cover_image(song_id)
+        print(f"Downloaded cover image to {picpath}")
+        return picpath
+    except Exception as e:
+        print(f"下载封面图失败: {e}")
+        return None

@@ -7,7 +7,7 @@ import pystray
 import sys
 import asyncio
 
-from utils import get_media_info, MusicPlayerGenerator, device_config, synthesize_fusion_frame, hide_window_from_taskbar, MusicCachePool, generate_cache_id, load_file2RGBImage
+from utils import get_media_info, MusicPlayerGenerator, device_config, synthesize_fusion_frame, hide_window_from_taskbar, MusicCachePool, generate_cache_id, load_file2RGBImage, download_cover_image_from_keyword
 
 class ScreenShowApp:
     """系统托盘和播放器窗口的主应用程序"""
@@ -73,14 +73,14 @@ class ScreenShowApp:
         """退出菜单项回调，应用生命周期结束必须调用"""
         self.is_running = False
 
-        # print("Stop icon...")
+        print("Stop icon...")
         self.icon.stop()
         time.sleep(1)  # 等待图标线程结束
-        # print("Destroying windows and exiting...")
+        print("Destroying windows and exiting...")
         cv2.destroyWindow(self.window_name)
         cv2.waitKey(1)  # 确保窗口被销毁
 
-        # print("Application quit")
+        print("Application quit")
         sys.exit(0)
 
     def draw_image(self, frame, pic_content):
@@ -103,8 +103,15 @@ class ScreenShowApp:
     
     def generate_image(self):
         """重新生成当前歌曲的播放器tile和fusion图片"""
-        time.sleep(0.5)  # 等待半秒，确保封面文件已更新
-        music_info = asyncio.run(get_media_info(get_cover=True))
+        # 1. 尝试从api下载封面图到本地cover.jpg
+        music_info = asyncio.run(get_media_info(get_cover=False))
+        cover_path = download_cover_image_from_keyword(music_info)
+        if cover_path is None:
+            print("下载封面图失败，使用缩略封面图")
+            # 2. 如果下载失败，则直接使用get_media_info获取的封面图
+            music_info = asyncio.run(get_media_info(get_cover=True))
+        else:
+            music_info["cover_path"] = cover_path
         # 生成新的tile图片，并进行fusion处理
         # print(f"Get new music cover: {music_info}")
         tile_image = self.global_frame_generator.generate_full_canvas(music_info)
@@ -113,11 +120,14 @@ class ScreenShowApp:
         self.img_content = final_fusion_image
         # 将final_tile_image加入缓存池
         self.tile_cache_pool.add_key(generate_cache_id(music_info), final_fusion_image)
+        print(f"Generated new tile image for music: {music_info.get('title', '')} - {music_info.get('artist', '')}")
+        time.sleep(0.1)
         # 此外再将 反着的播放状态 缓存一份，方便切换播放状态时快速加载
         music_info["playback_status"] = 0 if music_info.get('playback_status', 1) == 1 else 1
         tile_image = self.global_frame_generator.generate_full_canvas(music_info)
         final_fusion_image = synthesize_fusion_frame(tile_image, device_config)
         self.tile_cache_pool.add_key(generate_cache_id(music_info), final_fusion_image)
+        print(f"Also cached toggled playback status image for music: {music_info.get('title', '')} - {music_info.get('artist', '')}")
         
         
     
@@ -162,6 +172,7 @@ class ScreenShowApp:
             music_info = asyncio.run(get_media_info(get_cover=False))
             music_cache_id = generate_cache_id(music_info)
             if music_cache_id != self.now_cache_id:
+                print(f"Music changed, New music name: {music_info.get('title', '')} cache_id: {music_cache_id}")
                 self.on_music_updated(music_cache_id)
                 
             
@@ -174,4 +185,4 @@ class ScreenShowApp:
                 self.quit_action()
                 break
             
-            time.sleep(0.1)  # 控制更新频率
+            time.sleep(0.05)  # 控制更新频率

@@ -4,6 +4,7 @@
 
 # demo test
 test.py
+test.ipynb
 
 # Python bytecode
 *.pyc
