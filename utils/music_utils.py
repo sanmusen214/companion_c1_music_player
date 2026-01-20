@@ -3,6 +3,7 @@ from winsdk.windows.storage.streams import Buffer, InputStreamOptions
 from winsdk.windows.media.control import GlobalSystemMediaTransportControlsSessionPlaybackStatus
 from datetime import datetime, timezone
 import requests
+import asyncio
 
 async def get_media_info(get_cover=True):
     """
@@ -19,17 +20,29 @@ async def get_media_info(get_cover=True):
     
     if current_session:
         # 获取媒体属性（标题、艺术家等）
-        info = await current_session.try_get_media_properties_async()
+        try:
+            info = await asyncio.wait_for(current_session.try_get_media_properties_async(), timeout=5.0)
+        except asyncio.TimeoutError:
+            print("获取媒体属性超时")
+            return info_dict
         info_dict = {song_attr: info.__getattribute__(song_attr) for song_attr in dir(info) if song_attr[0] != '_'}
 
         # 获取封面图
         if get_cover and info.thumbnail:
             picpath = "cover.jpg"
             # 打开封面流
-            thumb_stream = await info.thumbnail.open_read_async()
+            try:
+                thumb_stream = await asyncio.wait_for(info.thumbnail.open_read_async(), timeout=5.0)
+            except asyncio.TimeoutError:
+                print("获取封面图流超时")
+                return info_dict
             # 读取流数据并保存为文件
             buffer = Buffer(thumb_stream.size)
-            await thumb_stream.read_async(buffer, buffer.capacity, InputStreamOptions.NONE)
+            try:
+                await asyncio.wait_for(thumb_stream.read_async(buffer, buffer.capacity, InputStreamOptions.NONE), timeout=5.0)
+            except asyncio.TimeoutError:
+                print("读取封面图数据超时")
+                return info_dict
             
             with open(picpath, "wb") as f:
                 f.write(bytearray(buffer))
@@ -87,7 +100,11 @@ def get_netease_id(music_info):
     result = res.json()
     if "result" not in result or "songs" not in result["result"] or len(result["result"]["songs"]) == 0:
         return None
-    return result["result"]["songs"][0]["id"]
+    # 检查 名字 是否匹配
+    best_result = result["result"]["songs"][0]
+    if best_result["name"].lower() != music_info.get('title', '').lower():
+        return None
+    return best_result["id"]
 
 def download_cover_image(song_id):
     url = f"https://api.injahow.cn/meting/?type=song&id={song_id}"
