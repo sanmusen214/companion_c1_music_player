@@ -150,7 +150,7 @@ class MusicPlayerGenerator:
         
         for idx in range(40):
             r, c = divmod(idx, 8) # 计算行和列 (5行8列)
-            print(f"Generating view {idx+1}/40...", end='\r')
+            # print(f"Generating view {idx+1}/40...", end='\r')
             
             view_img = self.create_view(idx)
             

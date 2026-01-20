@@ -73,14 +73,14 @@ class ScreenShowApp:
         """退出菜单项回调，应用生命周期结束必须调用"""
         self.is_running = False
 
-        print("Stop icon...")
+        # print("Stop icon...")
         self.icon.stop()
         time.sleep(1)  # 等待图标线程结束
-        print("Destroying windows and exiting...")
+        # print("Destroying windows and exiting...")
         cv2.destroyWindow(self.window_name)
         cv2.waitKey(1)  # 确保窗口被销毁
 
-        print("Application quit")
+        # print("Application quit")
         sys.exit(0)
 
     def draw_image(self, frame, pic_content):
@@ -106,7 +106,7 @@ class ScreenShowApp:
         time.sleep(0.5)  # 等待半秒，确保封面文件已更新
         music_info = asyncio.run(get_media_info(get_cover=True))
         # 生成新的tile图片，并进行fusion处理
-        print(f"Get new music cover: {music_info}")
+        # print(f"Get new music cover: {music_info}")
         tile_image = self.global_frame_generator.generate_full_canvas(music_info)
         final_fusion_image = synthesize_fusion_frame(tile_image, device_config)
         # 更新fusion图片到当前显示内容
@@ -126,7 +126,7 @@ class ScreenShowApp:
         self.now_cache_id = music_cache_id
         # 如果缓存池中已有该fusion后的图片，则直接加载
         if self.tile_cache_pool.has_key(music_cache_id):
-            print(f"Load tile image from cache: {music_cache_id}")
+            # print(f"Load tile image from cache: {music_cache_id}")
             cache_file_path = self.tile_cache_pool.get_cache_file_path(music_cache_id)
             RGB_image = load_file2RGBImage(cache_file_path)
             # 提取Image的RGB数组转换成 BGR，更新到 self.img_content

@@ -78,7 +78,7 @@ cloud_webdata_path = os.path.join(appdata_path, '../Local/NetEase/CloudMusic/web
 def download_cover_image(song_id, req_server="netease"):
     # 遍历云音乐的 webdata 目录，打印所有文件名
     possible_paths = []
-    print(cloud_webdata_path)
+    # print(cloud_webdata_path)
     for root, dirs, files in os.walk(cloud_webdata_path):
         for file in files:
             print(f"Found file: {file}")

@@ -110,7 +110,7 @@ def synthesize_fusion_frame(quilt_image, config):
 
     end_time = cv2.getTickCount()
     elapsed_time = (end_time - start_time) / cv2.getTickFrequency()
-    print(f"处理时间: {elapsed_time:.3f} 秒")
+    # print(f"处理时间: {elapsed_time:.3f} 秒")
     # 5. 色彩空间转换与保存
     # BGR array 范围放缩回 [0, 255]
     result = (fusion_frame * 255.0).astype(np.uint8)
