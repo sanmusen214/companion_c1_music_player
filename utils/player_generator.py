@@ -19,6 +19,8 @@ class MusicPlayerGenerator:
         self.canvas_w, self.canvas_h = 4320, 4800
         self.sub_w, self.sub_h = 540, 960
         self.rows, self.cols = 5, 8
+
+        self.cover_img_data = None
         
         # 字体设置：黑体
         self.font_path = "simhei.ttf" 
@@ -122,12 +124,8 @@ class MusicPlayerGenerator:
         # 计算相对中心的偏移步数 (k)
         center_index = 20  # 中心视角索引
         k = n - center_index
-        # 加载封面图
-        if self.info is None or 'cover_path' not in self.info:
-            # 无封面图时使用默认灰色背景
-            cover_img = Image.new("RGB", (500, 500), (100, 100, 100))
-        else:
-            cover_img = load_file2RGBImage(self.info['cover_path'])
+        # 从self.cover_img_data拷贝封面图
+        cover_img = Image.fromarray(self.cover_img_data)
             
         # --- 1. 背景绘制(此项必须第一个绘制) ---
         bg_final, draw = self._draw_background(cover_img, int(k * self.background_intendisy))
@@ -147,7 +145,13 @@ class MusicPlayerGenerator:
         """合并 40 个平移视角，输出最终 Tile 大图的numpy (BGR格式)"""
         self.info = music_info
         full_canvas = np.zeros((self.canvas_h, self.canvas_w, 3), dtype=np.uint8)
-        
+        # 加载封面图
+        if self.info is None or 'cover_path' not in self.info:
+            # 无封面图时使用默认灰色背景
+            cover_img = Image.new("RGB", (500, 500), (100, 100, 100))
+        else:
+            cover_img = load_file2RGBImage(self.info['cover_path'])
+        self.cover_img_data = np.array(cover_img)
         for idx in range(40):
             r, c = divmod(idx, 8) # 计算行和列 (5行8列)
             # print(f"Generating view {idx+1}/40...", end='\r')
