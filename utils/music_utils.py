@@ -57,7 +57,8 @@ class MusicInfoMonitor:
                 stderr=subprocess.PIPE,
                 bufsize=1,
                 universal_newlines=True,
-                encoding='utf-8'
+                encoding='utf-8',
+                creationflags=subprocess.CREATE_NO_WINDOW
             )
             
             # 实时读取输出[6](@ref)
