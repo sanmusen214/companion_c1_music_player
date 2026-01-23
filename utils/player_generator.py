@@ -146,7 +146,7 @@ class MusicPlayerGenerator:
         self.info = music_info
         full_canvas = np.zeros((self.canvas_h, self.canvas_w, 3), dtype=np.uint8)
         # 加载封面图
-        if self.info is None or 'cover_path' not in self.info:
+        if self.info is None or 'cover_path' not in self.info or self.info['cover_path'] is None:
             # 无封面图时使用默认灰色背景
             cover_img = Image.new("RGB", (500, 500), (100, 100, 100))
         else:

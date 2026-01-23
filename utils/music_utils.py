@@ -3,88 +3,135 @@ from winsdk.windows.storage.streams import Buffer, InputStreamOptions
 from winsdk.windows.media.control import GlobalSystemMediaTransportControlsSessionPlaybackStatus
 from datetime import datetime, timezone
 import requests
-import asyncio
+import subprocess
+import threading
+import queue
+import time
+from datetime import datetime
+from utils.config import GetMusicStatus_position
 
-async def get_media_info(get_cover=True):
-    """
-    获取当前windows系统正在播放的音乐的信息
-
-    title,artist,playback_status
-    """
-    info_dict = {}
-    # 获取会话管理器
-    sessions = await SessionManager.request_async()
+class MusicInfoMonitor:
+    """音乐信息监控器，负责运行外部程序并解析输出"""
     
-    # 获取当前活跃的媒体会话（如 Spotify, 网易云, 浏览器等）
-    current_session = sessions.get_current_session()
-    
-    if current_session:
-        # 获取媒体属性（标题、艺术家等）
-        try:
-            info = await asyncio.wait_for(current_session.try_get_media_properties_async(), timeout=5.0)
-        except asyncio.TimeoutError:
-            print("获取媒体属性超时")
-            return info_dict
-        info_dict = {song_attr: info.__getattribute__(song_attr) for song_attr in dir(info) if song_attr[0] != '_'}
-
-        # 获取封面图
-        if get_cover and info.thumbnail:
-            picpath = "cover.jpg"
-            # 打开封面流
-            try:
-                thumb_stream = await asyncio.wait_for(info.thumbnail.open_read_async(), timeout=5.0)
-            except asyncio.TimeoutError:
-                print("获取封面图流超时")
-                return info_dict
-            # 读取流数据并保存为文件
-            buffer = Buffer(thumb_stream.size)
-            try:
-                await asyncio.wait_for(thumb_stream.read_async(buffer, buffer.capacity, InputStreamOptions.NONE), timeout=5.0)
-            except asyncio.TimeoutError:
-                print("读取封面图数据超时")
-                return info_dict
-            
-            with open(picpath, "wb") as f:
-                f.write(bytearray(buffer))
-            info_dict['cover_path'] = picpath
+    def __init__(self):
+        self.process = None
+        self.is_running = False
+        self.output_queue = queue.Queue()
+        self.process_thread = None
+        self.parser_thread = None
+        # 监控输出的 歌曲名字，艺术家，播放状态
+        self.now_music_info = {
+            "title": "",
+            "artist": "",
+            "playback_status": 1 # 1: 播放中, 0: 暂停
+        }
+        # 防止歌曲切换时播放状态来回切换，状态切换需要累计确认三次
+        self.playback_confirm_count = 0
+        self.playback_confirm_status = 1
+        self.playback_confirm_max = 3
         
-        # 获取进度信息
-        # 音乐软件不上报，全是0，嘻嘻了
-        if 1:
-            # 2. 获取时间线属性
-            timeline = current_session.get_timeline_properties()
-            # 3. 获取播放信息
-            playback_info = current_session.get_playback_info()
+    def start_monitoring(self):
+        """启动监控线程"""
+        self.is_running = True
+        
+        # 启动进程监控线程 负责运行外部程序
+        self.process_thread = threading.Thread(target=self._run_process)
+        self.process_thread.start()
+        
+        # 启动输出解析线程 负责解析程序输出
+        self.parser_thread = threading.Thread(target=self._parse_output)
+        self.parser_thread.start()
+        
+    def stop_monitoring(self):
+        """停止监控"""
+        self.is_running = False
+        if self.process:
+            self.process.terminate()
             
-            # Windows 的 TimeSpan 映射到 Python 的 timedelta
-            total_duration = timeline.end_time.total_seconds() 
-            base_position = timeline.position.total_seconds()
+    def _run_process(self):
+        """运行外部程序并捕获输出[7,8](@ref)"""
+        try:
+            self.process = subprocess.Popen(
+                [GetMusicStatus_position],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                bufsize=1,
+                universal_newlines=True,
+                encoding='utf-8'
+            )
+            
+            # 实时读取输出[6](@ref)
+            while self.is_running and self.process.poll() is None:
+                line = self.process.stdout.readline()
+                if line:
+                    self.output_queue.put(line.strip())
+                time.sleep(0.1)  # 避免过度占用CPU
+                    
+        except Exception as e:
+            print(f"监控进程出错: {e}")
+        finally:
+            if self.process:
+                self.process.terminate()
+                
+    def _parse_output(self):
+        """解析程序输出并更新应用状态"""
+        
+        while self.is_running:
+            try:
+                # 非阻塞获取数据[7](@ref)
+                line = self.output_queue.get(timeout=0.1)
+                text = line.strip()
+                if text in ["Playing", "Paused"]:
+                    this_playback_status = self._parse_playback_status(text)
+                    # 防抖处理 播放状态需要连续三次确认才更新
+                    if this_playback_status != self.playback_confirm_status:
+                        # 状态变化，重置计数
+                        self.playback_confirm_status = this_playback_status
+                        self.playback_confirm_count = 1
+                    else:
+                        # 状态相同，计数+1
+                        self.playback_confirm_count = (self.playback_confirm_count + 1) % (self.playback_confirm_max + 1)
+                        if self.playback_confirm_count >= self.playback_confirm_max:
+                            playback_status = self.playback_confirm_status
+                            self.now_music_info["playback_status"] = playback_status
+                elif " - " in text:
+                    music_info = self._parse_music_info(text)
+                    self.now_music_info["title"] = music_info.get("title", "")
+                    self.now_music_info["artist"] = music_info.get("artist", "")
+                else:
+                    # 清空当前音乐信息
+                    self.now_music_info = {
+                        "title": "",
+                        "artist": "",
+                        "playback_status": 1
+                    }
 
-            # print(f"Total duration: {total_duration} seconds")
-            # print(f"Base position: {base_position} seconds")
-
-            # 获取倍速 (从 playback_info 获取)
-            # 注意：某些播放器可能返回 None，默认给 1.0
-            rate = playback_info.playback_rate if playback_info.playback_rate is not None else 1.0
-            # print(f"Playback rate: {rate}")
-            if playback_info.playback_status == GlobalSystemMediaTransportControlsSessionPlaybackStatus.PLAYING:
-                # 计算自上次更新时间以来的经过时间
-                last_update = timeline.last_updated_time.timestamp()
-                now = datetime.now(timezone.utc).timestamp()
-                elapsed = now - last_update
-                current_progress = base_position + (elapsed * rate)
-                info_dict['playback_status'] = 1
+            except queue.Empty:
+                continue
+            except Exception as e:
+                print(f"解析输出时出错: {e}")
+                
+    def _parse_playback_status(self, status_line):
+        """解析播放状态"""
+        status_mapping = {
+            "Playing": 1,    # 播放中
+            "Paused": 0     # 暂停
+        }
+        status = status_line.strip()
+        return status_mapping.get(status, status_mapping["Playing"])
+    
+    def _parse_music_info(self, music_line):
+        """解析歌曲信息"""
+        try:
+            # 假设格式为: "歌曲名 - 艺术家"
+            parts = music_line.split(' - ', 1)
+            if len(parts) == 2:
+                return {"title": parts[0].strip(), "artist": parts[1].strip()}
             else:
-                current_progress = base_position
-                info_dict['playback_status'] = 0
-
-            # 边界限制
-            current_progress = max(0, min(current_progress, total_duration))
-
-            info_dict['progress_seconds'] = current_progress
-            info_dict['total_duration_seconds'] = total_duration
-
-    return info_dict
+                # 如果不符合标准格式，整个字符串作为标题
+                return {"title": music_line.strip(), "artist": "Unknown"}
+        except:
+            return {"title": "解析错误", "artist": "Unknown"}
 
 import os
 appdata_path = os.getenv('APPDATA')
