@@ -8,7 +8,7 @@ import sys
 import asyncio
 
 from utils import MusicPlayerGenerator, device_config, synthesize_fusion_frame, hide_window_from_taskbar, MusicCachePool, generate_cache_id, load_file2RGBImage, download_cover_image_from_keyword, MusicInfoMonitor
-from utils.config import Cache_len
+from utils.config import my_config
 
 class ScreenShowApp:
     """系统托盘和播放器窗口的主应用程序"""
@@ -24,7 +24,7 @@ class ScreenShowApp:
         # 现在绘制的歌曲status的缓存id
         self.now_cache_id = ""
         # 缓存池
-        self.tile_cache_pool = MusicCachePool(max_size=Cache_len)
+        self.tile_cache_pool = MusicCachePool(max_size=my_config.get("Cache_len", 10))
         # 现在合成tile图片内容（BGR 数组）
         self.img_content = None
         # tile图片生成器
@@ -76,15 +76,14 @@ class ScreenShowApp:
     def quit_action(self):
         """退出菜单项回调，应用生命周期结束必须调用"""
         self.is_running = False
-
+        print("Stopping music monitor...")
+        self.music_monitor.stop_monitoring()
         print("Stop icon...")
         self.icon.stop()
         time.sleep(1)  # 等待图标线程结束
         print("Destroying windows and exiting...")
         cv2.destroyWindow(self.window_name)
         cv2.waitKey(1)  # 确保窗口被销毁
-        print("Stopping music monitor...")
-        self.music_monitor.stop_monitoring()
         print("Application quit")
         sys.exit(0)
 
@@ -174,7 +173,7 @@ class ScreenShowApp:
             # 获取当前播放歌曲(封面先不获取)
             music_info = self.music_monitor.now_music_info.copy()
             music_cache_id = generate_cache_id(music_info)
-            if music_cache_id != self.now_cache_id:
+            if music_cache_id != self.now_cache_id and music_info.get("title", "") != "": # 歌曲信息有变化且不为空
                 print(f"Music changed, {music_info.get('title', '')} - {music_info.get('artist', '')} cache_id: {music_cache_id}")
                 self.on_music_updated(music_cache_id)
                 

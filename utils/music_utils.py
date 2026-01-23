@@ -8,7 +8,7 @@ import threading
 import queue
 import time
 from datetime import datetime
-from utils.config import GetMusicStatus_position
+from utils.config import my_config
 
 class MusicInfoMonitor:
     """音乐信息监控器，负责运行外部程序并解析输出"""
@@ -52,7 +52,7 @@ class MusicInfoMonitor:
         """运行外部程序并捕获输出[7,8](@ref)"""
         try:
             self.process = subprocess.Popen(
-                [GetMusicStatus_position],
+                [my_config.get("GetMusicStatus_position")],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 bufsize=1,
