@@ -6,6 +6,7 @@ from PIL import Image, ImageDraw
 import pystray
 import sys
 import asyncio
+import webbrowser
 
 from utils import MusicPlayerGenerator, device_config, synthesize_fusion_frame, hide_window_from_taskbar, MusicCachePool, generate_cache_id, load_file2RGBImage, download_cover_image_from_keyword, MusicInfoMonitor
 from utils.config import my_config
@@ -30,7 +31,7 @@ class ScreenShowApp:
         # tile图片生成器
         self.global_frame_generator = MusicPlayerGenerator(1.5, 2.5, 1.5)
         # 创建OpenCV窗口名字
-        self.window_name = "music3dc1image"
+        self.window_name = "music3d c1 image"
         self.initialize_cv_window()
         # 启动系统托盘图标
         self.setup_tray_icon()
@@ -38,17 +39,18 @@ class ScreenShowApp:
     def setup_tray_icon(self):
         """创建系统托盘图标和菜单"""
         # 创建托盘图标图像
-        image = Image.new('RGB', (64, 64), (255, 255, 255))
-        dc = ImageDraw.Draw(image)
-        dc.rectangle([16, 16, 48, 48], fill=(0, 100, 200))
+        image = Image.open("assets/icon.ico")
         
         # 创建菜单项
         menu_items = [
+            pystray.MenuItem('C1 音乐副屏app', None),
+            pystray.MenuItem('B站: 三木森桑', lambda: webbrowser.open("https://space.bilibili.com/7331920")),
+            pystray.MenuItem('GitHub: sanmusen214', lambda: webbrowser.open("https://github.com/sanmusen214")),
             pystray.MenuItem('退出', self.quit_action)
         ]
         
         # 创建托盘图标
-        self.icon = pystray.Icon("music3dc1", image, "music3dc1 app", menu=pystray.Menu(*menu_items))
+        self.icon = pystray.Icon("music3d c1", image, "music3d c1 app", menu=pystray.Menu(*menu_items))
         
         # 在单独线程中运行托盘图标
         self.tray_thread = threading.Thread(target=self.icon.run, daemon=True)
@@ -70,7 +72,7 @@ class ScreenShowApp:
                 # Set to fullscreen
                 cv2.setWindowProperty(self.window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
                 # Hide from taskbar
-                hide_window_from_taskbar("music3dc1image")
+                hide_window_from_taskbar(self.window_name)
                 break
     
     def quit_action(self):
