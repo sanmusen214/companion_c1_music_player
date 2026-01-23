@@ -99,7 +99,7 @@ class MusicInfoMonitor:
                     music_info = self._parse_music_info(text)
                     self.now_music_info["title"] = music_info.get("title", "")
                     self.now_music_info["artist"] = music_info.get("artist", "")
-                else:
+                elif "None" in text:
                     # 清空当前音乐信息
                     self.now_music_info = {
                         "title": "",

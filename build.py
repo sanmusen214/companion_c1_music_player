@@ -5,17 +5,18 @@ import time
 import os
 import shutil
 # 打包
+target_name = "自由象限 C1 音乐副屏"
 # icon.ico 
 subprocess.run([
     "pyinstaller",
-    '--name=music_3d_cover',
+    f'--name={target_name}',
     "main.py",
     "--noconsole",
     "-y",
     "--icon=assets/icon.ico",
 ])
 
-target_dir = "dist/music_3d_cover"
+target_dir = f"dist/{target_name}"
 # 配置文件
 if os.path.exists(target_dir):
     shutil.copy("software_config.yaml", f"{target_dir}/software_config.yaml")

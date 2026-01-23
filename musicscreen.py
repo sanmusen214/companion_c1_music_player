@@ -29,7 +29,11 @@ class ScreenShowApp:
         # 现在合成tile图片内容（BGR 数组）
         self.img_content = None
         # tile图片生成器
-        self.global_frame_generator = MusicPlayerGenerator(1.5, 2.5, 1.5)
+        self.global_frame_generator = MusicPlayerGenerator(
+            my_config.get("Cover_intensity"),
+            my_config.get("Background_intensity"),
+            my_config.get("Word_intensity"),
+        )
         # 创建OpenCV窗口名字
         self.window_name = "music3d c1 image"
         self.initialize_cv_window()

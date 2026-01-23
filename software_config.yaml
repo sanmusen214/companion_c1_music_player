@@ -1,2 +1,17 @@
 GetMusicStatus_position: "C:/Users/sanmu214/myfolder/mysoftware/now_playing_music_getter/GetMusicStatus.exe"
 Cache_len: 10
+
+Cover_intensity: 1.5
+Background_intensity: 0.2
+Word_intensity: 1.5
+
+Background_blur: 20
+Background_dark_percent: 0.25
+
+Max_title_width_percent: 0.85
+Title_y_position_percent: 0.66
+
+Has_cover_blur_border: true
+Cover_size_percent: 0.85
+
+Control_y_position_percent: 0.85
