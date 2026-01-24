@@ -42,9 +42,22 @@ if os.path.exists(music_software_dir):
     print("音乐软件文件复制成功！")
     # 修改配置文件中的GetMusicStatus_position的路径为相对路径到music_info_software目录下的GetMusicStatus.exe
     new_music_software_path = os.path.join("music_info_software", os.path.basename(music_software_path))
-    my_config.set('GetMusicStatus_position', new_music_software_path)
+    # my_config.set('GetMusicStatus_position', new_music_software_path)
+    # 读取配置文件的内容
+    now_yaml_content = None
+    with open('software_config.yaml', 'r', encoding='utf-8') as f:
+        now_yaml_content = f.read()
+    # 替换路径
+    # 找到 有GetMusicStatus_position: 开头的行，并替换其后的路径
+    now_yaml_content_lines = now_yaml_content.splitlines()
+    for i in range(len(now_yaml_content_lines)):
+        line = now_yaml_content_lines[i]
+        if line.strip().startswith('GetMusicStatus_position:'):
+            # 替换该行
+            now_yaml_content_lines[i] = f'GetMusicStatus_position: {new_music_software_path}'
     # 保存修改后的配置文件
-    my_config._save_config(os.path.join(target_dir, 'software_config.yaml'))
+    with open(f'{target_dir}/software_config.yaml', 'w', encoding='utf-8') as f:
+        f.write('\n'.join(now_yaml_content_lines))
     print("配置文件更新成功！")
 else:
     print(f"错误：未找到音乐软件目录 {music_software_dir}")
