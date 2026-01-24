@@ -148,10 +148,10 @@ def get_netease_id(music_info):
     result = res.json()
     if "result" not in result or "songs" not in result["result"] or len(result["result"]["songs"]) == 0:
         return None
-    # 检查 名字 是否匹配
     best_result = result["result"]["songs"][0]
-    if best_result["name"].lower() != music_info.get('title', '').lower():
-        return None
+    # 检查 名字 或 作者 是否匹配
+    # if best_result["name"].lower() != music_info.get('title', '').lower():
+    #     return None
     return best_result["id"]
 
 def download_cover_image(song_id):
