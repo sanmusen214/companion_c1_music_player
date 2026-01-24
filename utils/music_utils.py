@@ -1,13 +1,8 @@
-from winsdk.windows.media.control import GlobalSystemMediaTransportControlsSessionManager as SessionManager
-from winsdk.windows.storage.streams import Buffer, InputStreamOptions
-from winsdk.windows.media.control import GlobalSystemMediaTransportControlsSessionPlaybackStatus
-from datetime import datetime, timezone
 import requests
 import subprocess
 import threading
 import queue
 import time
-from datetime import datetime
 from utils.config import my_config
 
 class MusicInfoMonitor:

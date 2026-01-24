@@ -1,12 +1,9 @@
 import numpy as np
 from PIL import Image
 import cv2
-from winsdk.windows.media.control import GlobalSystemMediaTransportControlsSessionManager as SessionManager
-from winsdk.windows.storage.streams import Buffer, InputStreamOptions
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 from .image_save_load import load_file2RGBImage
 from utils.config import my_config
-import random
 
 class MusicPlayerGenerator:
     """获取音乐并制作播放器页面，输出合成后的 Tile 图片"""

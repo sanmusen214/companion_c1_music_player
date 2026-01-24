@@ -1,5 +1,5 @@
 import os
-from PIL import Image, ImageDraw
+from PIL import Image
 from .image_save_load import save_BGRimage2file
 import base64
 import hashlib

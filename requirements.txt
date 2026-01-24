@@ -1,0 +1,6 @@
+pystray
+opencv-python
+pywin32
+requests
+pyyaml
+screeninfo

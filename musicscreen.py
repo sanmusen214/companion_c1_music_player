@@ -2,11 +2,11 @@ import cv2
 import numpy as np
 import threading
 import time
-from PIL import Image, ImageDraw
+from PIL import Image
 import pystray
 import sys
-import asyncio
 import webbrowser
+from screeninfo import get_monitors
 
 from utils import MusicPlayerGenerator, device_config, synthesize_fusion_frame, hide_window_from_taskbar, MusicCachePool, generate_cache_id, load_file2RGBImage, download_cover_image_from_keyword, MusicInfoMonitor
 from utils.config import my_config
@@ -62,7 +62,6 @@ class ScreenShowApp:
     
     def initialize_cv_window(self):
         # 获取所有监视器信息
-        from screeninfo import get_monitors
         monitors = get_monitors()
         # Find monitor with resolution 1440x2560
         for monitor in monitors:
