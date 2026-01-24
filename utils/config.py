@@ -10,7 +10,7 @@ class ConfigManager:
     
     def _load_config(self):
         """
-        安全加载YAML配置文件[4,8](@ref)
+        安全加载YAML配置文件
         """
         if not os.path.exists(self.config_path):
             raise FileNotFoundError(f"配置文件不存在: {self.config_path}")
@@ -32,8 +32,27 @@ class ConfigManager:
     
     def get(self, key, default = None):
         """
-        获取配置值[4,5](@ref)
+        获取配置值
         """
         return self.config.get(key, default)
+    
+    def set(self, key, value):
+        """
+        设置配置值
+        """
+        self.config[key] = value
+
+    def _save_config(self, target_path = None):
+        """
+        保存配置到YAML文件
+        """
+        if target_path is None:
+            target_path = self.config_path
+        try:
+            with open(target_path, 'w', encoding='utf-8') as file:
+                yaml.safe_dump(self.config, file)  # 使用safe_dump避免安全风险
+                print(f"配置文件保存成功: {target_path}")
+        except Exception as e:
+            print(f"保存配置文件时出错: {e}")
 
 my_config = ConfigManager('software_config.yaml')

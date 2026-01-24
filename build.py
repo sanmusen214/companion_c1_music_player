@@ -4,6 +4,7 @@ import subprocess
 import time
 import os
 import shutil
+from utils.config import my_config
 # 打包
 target_name = "自由象限 C1 音乐副屏"
 # icon.ico 
@@ -31,3 +32,19 @@ if os.path.exists(target_dir):
     print("图标文件复制成功！")
 else:
     print(f"错误：等待超时，未找到目录 {target_dir}")
+# 音乐软件
+# 找到配置项里的音乐软件路径
+music_software_path = my_config.get('GetMusicStatus_position', '')
+music_software_dir = os.path.dirname(music_software_path)
+if os.path.exists(music_software_dir):
+    dest_music_software_dir = os.path.join(target_dir, "music_info_software")
+    shutil.copytree(music_software_dir, dest_music_software_dir)
+    print("音乐软件文件复制成功！")
+    # 修改配置文件中的GetMusicStatus_position的路径为相对路径到music_info_software目录下的GetMusicStatus.exe
+    new_music_software_path = os.path.join("music_info_software", os.path.basename(music_software_path))
+    my_config.set('GetMusicStatus_position', new_music_software_path)
+    # 保存修改后的配置文件
+    my_config._save_config(os.path.join(target_dir, 'software_config.yaml'))
+    print("配置文件更新成功！")
+else:
+    print(f"错误：未找到音乐软件目录 {music_software_dir}")
