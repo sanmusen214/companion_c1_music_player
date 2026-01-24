@@ -1,0 +1,2 @@
+# companion_c1_music_player
+适用于自由象限c1屏的音乐显示
