@@ -1,3 +1,5 @@
+# netease,qq,kugou,kuwo,soda,spotify,apple,ayna,potplayer,foobar,lx,huahua,musicfree,bq
+Music_platform: "netease"
 GetMusicStatus_position: "C:/Users/sanmu214/myfolder/mysoftware/now_playing_music_getter/GetMusicStatus.exe"
 Cache_len: 10
 

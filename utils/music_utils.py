@@ -14,6 +14,7 @@ class MusicInfoMonitor:
         self.output_queue = queue.Queue()
         self.process_thread = None
         self.parser_thread = None
+        self.music_platform = my_config.get("Music_platform", "netease")
         # 监控输出的 歌曲名字，艺术家，播放状态
         self.now_music_info = {
             "title": "",
@@ -47,7 +48,7 @@ class MusicInfoMonitor:
         """运行外部程序并捕获输出[7,8](@ref)"""
         try:
             self.process = subprocess.Popen(
-                [my_config.get("GetMusicStatus_position")],
+                [my_config.get("GetMusicStatus_position"), "--platform", self.music_platform],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 bufsize=1,

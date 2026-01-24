@@ -1,6 +1,7 @@
 # source
 *.jpg
 *.png
+cover*.txt
 
 # demo test
 test.py
