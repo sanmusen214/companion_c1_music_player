@@ -188,7 +188,7 @@ class MusicPlayerGenerator:
         base_img.paste(cover_blur, (cover_x - added_size // 2, cover_y - added_size // 2))
         base_img.paste(cover_res, (cover_x, cover_y))
 
-    def _draw_background(self, cover_img, bg_offset):
+    def _draw_background(self, bg_offset):
         """根据封面图绘制模糊背景"""
         # --- 1. 背景平移 (Crop 模式防露底) ---
         
@@ -198,7 +198,8 @@ class MusicPlayerGenerator:
         
         # 背景位移：k > 0 (右侧视角) 看到背景的右侧部分，即取样框向右移
         bg_shift = int(bg_offset)
-        left = (bg_w - self.sub_w) // 2 + bg_shift
+        # 这里是裁剪部分移动方向，和图的假设移动方向相反
+        left = (bg_w - self.sub_w) // 2 - bg_shift
         top = (bg_h - self.sub_h) // 2
         bg_final = bg.crop((left, top, left + self.sub_w, top + self.sub_h))
         draw = ImageDraw.Draw(bg_final)
@@ -213,7 +214,7 @@ class MusicPlayerGenerator:
         cover_img = Image.fromarray(self.cover_img_data)
             
         # --- 1. 背景绘制(此项必须第一个绘制) ---
-        bg_final, draw = self._draw_background(cover_img, int(k * self.background_intendisy))
+        bg_final, draw = self._draw_background(int(k * self.background_intendisy))
         # --- 2. 前景 UI ---
         self._draw_cover(bg_final, cover_img, int(k * self.cover_intensity))
         word_offset = int(k * self.word_intensity)
