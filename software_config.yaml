@@ -1,19 +1,23 @@
-# netease,qq,kugou,kuwo,soda,spotify,apple,ayna,potplayer,foobar,lx,huahua,musicfree,bq
+# 音乐平台：netease,qq,kugou,kuwo,soda,spotify,apple,ayna,potplayer,foobar,lx,huahua,musicfree,bq
 Music_platform: "netease"
+# 获取音乐状态程序位置
 GetMusicStatus_position: "C:/Users/sanmu214/myfolder/mysoftware/now_playing_music_getter/GetMusicStatus.exe"
+# 3d图片缓存长度
 Cache_len: 10
-
+# 景深
 Cover_intensity: -1.3
 Background_intensity: 5
 Word_intensity: -1.5
-
+# 背景
 Background_blur: 20
 Background_dark_percent: 0.3
-
+# 标题
 Max_title_width_percent: 0.9
-Title_y_position_percent: 0.66
-
+Title_y_position_percent: 0.60
+Artist_y_position_percent_offset_from_title: 0.08
+# 封面
 Has_cover_blur_border: true
 Cover_size_percent: 0.9
-
-Control_y_position_percent: 0.85
+Cover_y_position_percent: 0.05
+# 控制按钮
+Control_y_position_percent: 0.93

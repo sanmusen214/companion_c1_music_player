@@ -133,13 +133,13 @@ class MusicPlayerGenerator:
         draw.polygon([(rx, center_y), (rx-pn_width, center_y-s), (rx-pn_width, center_y+s)], fill=color)
         draw.rectangle([rx, center_y-s, rx+pn_ar_w, center_y+s], fill=color)
 
-    def _draw_title(self, draw, word_offset):
+    def _draw_text(self, draw, text, y_position, word_offset, max_font_size=100, min_font_size=60):
         """绘制标题，自动适应宽度"""
         # --- 标题自适应逻辑开始 ---
-        title = self.info.get('title', 'Unknown Title')
+        title = text
         max_width = int(self.sub_w * my_config.get("Max_title_width_percent"))  # 设置最大允许宽度为画布的 85%
-        current_font_size = 100             # 初始字号
-        min_font_size = 60                  # 最小允许字号
+        current_font_size = max_font_size             # 初始字号
+        min_font_size = min_font_size                  # 最小允许字号
         
         # 1. 动态缩小字号
         temp_font = ImageFont.truetype(self.font_path, current_font_size)
@@ -147,7 +147,7 @@ class MusicPlayerGenerator:
         tw = bbox[2] - bbox[0]
 
         while tw > max_width and current_font_size > min_font_size:
-            current_font_size -= 10
+            current_font_size -= 3
             temp_font = ImageFont.truetype(self.font_path, current_font_size)
             bbox = draw.textbbox((0, 0), title, font=temp_font)
             tw = bbox[2] - bbox[0]
@@ -165,11 +165,19 @@ class MusicPlayerGenerator:
         text_color = (240, 240, 240)
         shadow_color = (40, 40, 40)
         
-        y_position = int(my_config.get("Title_y_position_percent")*self.sub_h)
         # 绘制阴影和正文
         # draw.text((tx + 1, y_position+1), title, font=temp_font, fill=shadow_color)
         draw.text((tx, y_position), title, font=temp_font, fill=text_color)
         # --- 标题自适应逻辑结束 ---
+        # 返回渲染出的文字的左上角和右下角坐标
+        return (tx, y_position, tx + tw, y_position + (bbox[3] - bbox[1]))
+
+    def _draw_title_artist(self, draw, word_offset):
+        """绘制标题，自动适应宽度"""
+        boxres = self._draw_text(draw, self.info.get('title', 'Unknown Title'), int(my_config.get("Title_y_position_percent")*self.sub_h), word_offset, max_font_size=100, min_font_size=60)
+        """绘制艺术家名称"""
+        self._draw_text(draw, self.info.get('artist', 'Unknown Artist'), int(my_config.get("Artist_y_position_percent_offset_from_title")*self.sub_h + boxres[3]), word_offset, max_font_size=50, min_font_size=40)
+        
 
     def _draw_cover(self, base_img, cover_img, fg_offset):
         """绘制封面图"""
@@ -178,14 +186,14 @@ class MusicPlayerGenerator:
         cw, ch = int(self.sub_w * cv_size_percent), int(self.sub_w * cv_size_percent)
         cover_res = cover_img.resize((cw, ch), Image.Resampling.LANCZOS)
         cover_x = (self.sub_w - cw) // 2 + fg_offset
-        cover_y = 80
+        cover_y = int(my_config.get("Cover_y_position_percent") * self.sub_h)
         # 创建一个比封面大 n 像素的模糊后的封面作为底层
         if my_config.get("Has_cover_blur_border"):
             added_size = 8
             cover_blur = cover_img.resize((cw + added_size, ch + added_size), Image.Resampling.LANCZOS)
             cover_blur = cover_blur.filter(ImageFilter.GaussianBlur(radius=15))
         # cover 和比cover大一圈的cover_blur 贴上
-        base_img.paste(cover_blur, (cover_x - added_size // 2, cover_y - added_size // 2))
+        # base_img.paste(cover_blur, (cover_x - added_size // 2, cover_y - added_size // 2))
         base_img.paste(cover_res, (cover_x, cover_y))
 
     def _draw_background(self, bg_offset):
@@ -218,7 +226,7 @@ class MusicPlayerGenerator:
         # --- 2. 前景 UI ---
         self._draw_cover(bg_final, cover_img, int(k * self.cover_intensity))
         word_offset = int(k * self.word_intensity)
-        self._draw_title(draw, word_offset)
+        self._draw_title_artist(draw, word_offset)
         self._draw_controls(draw, word_offset)
         # ===== 输出 =====
         # Image 绘图后的 RGB 转为 GBR 格式 numpy 输出
