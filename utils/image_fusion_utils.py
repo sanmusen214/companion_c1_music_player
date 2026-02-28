@@ -52,66 +52,120 @@ def get_uv_from_choice(x, y, choice_float, imgs_count_x, imgs_count_y):
     v = (choice_vec_y + y) / imgs_count_y
     return u, v
 
-def synthesize_fusion_frame(quilt_image, config):
-    """ 根据 quilt 图片(BGR array)和设备参数合成最终的 fusion 图片(BGR array) """
-    # BGR image 转 np， 范围 [0, 1]
-    quilt_np = np.array(quilt_image).astype(np.float32) / 255.0
+# def synthesize_fusion_frame(quilt_image, config):
+#     """ 根据 quilt 图片(BGR array)和设备参数合成最终的 fusion 图片(BGR array) """
+#     # BGR image 转 np， 范围 [0, 1]
+#     quilt_np = np.array(quilt_image).astype(np.float32) / 255.0
 
-    q_h, q_w, _ = quilt_np.shape
+#     q_h, q_w, _ = quilt_np.shape
 
-    # 2. 设备参数 (从 config 读取)
+#     # 2. 设备参数 (从 config 读取)
+#     slope = config['obliquity']    # 倾斜度
+#     interval = config['lineNumber'] # 线数/间距
+#     x0 = config['deviation']       # 偏移量
+    
+#     output_w, output_h = 1440, 2560
+#     imgs_count_x, imgs_count_y = 8.0, 5.0
+#     # 计时
+#     start_time = cv2.getTickCount()
+#     # 3. 创建输出画布
+#     fusion_frame = np.zeros((output_h, output_w, 3), dtype=np.float32)
+
+#     # 4. 模拟片元着色器采样过程
+#     # 生成输出网格的归一化坐标 [0, 1]
+#     yy, xx = np.mgrid[0:output_h, 0:output_w]
+#     pos_x = xx / (output_w - 1)
+#     pos_y = 1.0 - (yy / (output_h - 1)) # 注意着色器中 (1 - pos.y)
+
+#     # 计算 RGB 三个通道的 bias 重采样逻辑
+#     for channel_idx in range(3): # 0:R, 1:G, 2:B
+#         bias = float(channel_idx)
+        
+#         # GLSL: float x1 = (pos.x * _OutputSizeX + 0.5 + (1-pos.y) * _OutputSizeY * _Slope) * 3.0 + bias;
+#         # 对应代码中 get_choice_float 逻辑
+#         pixel_x = pos_x * output_w + 0.5
+#         pixel_y = (1.0 - pos_y) * output_h + 0.5
+        
+#         x1 = (pixel_x + pixel_y * slope) * 3.0 + bias
+#         x_local = np.mod(x1 + x0, interval)
+#         choice_float = x_local / interval
+        
+#         # 获取采样 UV
+#         u, v = get_uv_from_choice(pos_x, pos_y, choice_float, imgs_count_x, imgs_count_y)
+        
+#         # 映射回 quilt 图片的像素索引
+#         sample_x = (u * (q_w - 1)).astype(np.int32)
+#         sample_y = ((1.0 - v) * (q_h - 1)).astype(np.int32) # 图片坐标系 y 反转
+        
+#         # 限制范围
+#         sample_x = np.clip(sample_x, 0, q_w - 1)
+#         sample_y = np.clip(sample_y, 0, q_h - 1)
+        
+#         # 采样对应通道的值
+#         fusion_frame[:, :, channel_idx] = quilt_np[sample_y, sample_x, channel_idx]
+
+#     end_time = cv2.getTickCount()
+#     elapsed_time = (end_time - start_time) / cv2.getTickFrequency()
+#     # print(f"处理时间: {elapsed_time:.3f} 秒")
+#     # 5. 色彩空间转换与保存
+#     # BGR array 范围放缩回 [0, 255]
+#     result = (fusion_frame * 255.0).astype(np.uint8)
+#     # 输出的 fusion array 是 BGR 的
+#     return result
+
+# b. 整数坐标
+def synthesize_fusion_frame(quilt_np, config):
+    quilt=quilt_np
+    q_h, q_w, _ = quilt.shape
+
     slope = config['obliquity']    # 倾斜度
     interval = config['lineNumber'] # 线数/间距
     x0 = config['deviation']       # 偏移量
     
-    output_w, output_h = 1440, 2560
-    imgs_count_x, imgs_count_y = 8.0, 5.0
-    # 计时
-    start_time = cv2.getTickCount()
-    # 3. 创建输出画布
-    fusion_frame = np.zeros((output_h, output_w, 3), dtype=np.float32)
+    rows, cols = 5, 8
+    total_views = rows * cols # 40
+    tile_h, tile_w = q_h // rows, q_w // cols  # 800, 450
+    screen_h, screen_w = 2560, 1440
+    
+    # 生成屏幕坐标网格 (y, x)
+    yy, xx = np.mgrid[0:screen_h, 0:screen_w]
+    
+    # 创建空的融合图
+    fusion = np.zeros((screen_h, screen_w, 3), dtype=np.uint8)
+    
+    # 分别处理 R, G, B 三个通道的交织逻辑
+    for c in range(3):
+        # 1. 计算每个像素点对应的视图索引
+        # 参考插件中的算法: x1 = (x + y * _Slope) * 3.0 + bias + x0
+        val = (xx + yy * slope) * 3.0 + float(c) + x0
+        norm_val = (val % interval) / interval
+        # 根据修正后的逻辑计算视图索引：从右往左，从下往上
+        view_indices = (total_views - 1) - np.floor(norm_val * total_views).astype(int)
+        view_indices = np.clip(view_indices, 0, total_views - 1) # 确保索引在 0-39 范围内
+        
+        # 2. 根据修正后的逻辑映射到 Quilt 中的坐标 (从上到下，从左到右)
+        # 行索引：view / 8 (0表示顶部第一行)
+        q_row = view_indices // cols
+        # 列索引：view % 8 (0表示左侧第一列)
+        q_col = view_indices % cols
+        
+        # 3. 计算在该视图切片（Tile）内的内部坐标
+        # 将屏幕上的坐标比例线性映射到 Tile 内部
+        u_in_tile = (xx / screen_w) * tile_w
+        v_in_tile = (yy / screen_h) * tile_h
+        
+        # 4. 计算最终在原始 Quilt 图片中的像素索引
+        target_x = (q_col * tile_w + u_in_tile).astype(int)
+        target_y = (q_row * tile_h + v_in_tile).astype(int)
+        
+        # 防止越界
+        target_x = np.clip(target_x, 0, q_w - 1)
+        target_y = np.clip(target_y, 0, q_h - 1)
+        
+        # 5. 采样并赋值
+        fusion[:, :, c] = quilt[target_y, target_x, c]
 
-    # 4. 模拟片元着色器采样过程
-    # 生成输出网格的归一化坐标 [0, 1]
-    yy, xx = np.mgrid[0:output_h, 0:output_w]
-    pos_x = xx / (output_w - 1)
-    pos_y = 1.0 - (yy / (output_h - 1)) # 注意着色器中 (1 - pos.y)
-
-    # 计算 RGB 三个通道的 bias 重采样逻辑
-    for channel_idx in range(3): # 0:R, 1:G, 2:B
-        bias = float(channel_idx)
-        
-        # GLSL: float x1 = (pos.x * _OutputSizeX + 0.5 + (1-pos.y) * _OutputSizeY * _Slope) * 3.0 + bias;
-        # 对应代码中 get_choice_float 逻辑
-        pixel_x = pos_x * output_w + 0.5
-        pixel_y = (1.0 - pos_y) * output_h + 0.5
-        
-        x1 = (pixel_x + pixel_y * slope) * 3.0 + bias
-        x_local = np.mod(x1 + x0, interval)
-        choice_float = x_local / interval
-        
-        # 获取采样 UV
-        u, v = get_uv_from_choice(pos_x, pos_y, choice_float, imgs_count_x, imgs_count_y)
-        
-        # 映射回 quilt 图片的像素索引
-        sample_x = (u * (q_w - 1)).astype(np.int32)
-        sample_y = ((1.0 - v) * (q_h - 1)).astype(np.int32) # 图片坐标系 y 反转
-        
-        # 限制范围
-        sample_x = np.clip(sample_x, 0, q_w - 1)
-        sample_y = np.clip(sample_y, 0, q_h - 1)
-        
-        # 采样对应通道的值
-        fusion_frame[:, :, channel_idx] = quilt_np[sample_y, sample_x, channel_idx]
-
-    end_time = cv2.getTickCount()
-    elapsed_time = (end_time - start_time) / cv2.getTickFrequency()
-    # print(f"处理时间: {elapsed_time:.3f} 秒")
-    # 5. 色彩空间转换与保存
-    # BGR array 范围放缩回 [0, 255]
-    result = (fusion_frame * 255.0).astype(np.uint8)
-    # 输出的 fusion array 是 BGR 的
-    return result
+    return fusion
 
 # 步骤1：读取并解密设备配置
 KEYCODE = b"3f5e1a2b4c6d7e8f9a0b1c2d3e4f5a6b"
