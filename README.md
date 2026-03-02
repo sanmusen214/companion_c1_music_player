@@ -1,13 +1,17 @@
+<img src="./docs/imgs/picfuse.webp" style="height:720px"/>
+
 # companion_c1_music_player
 
-适用于自由象限c1屏 (Companion1) 的音乐显示
+适用于裸眼3d自由象限c1屏 (Companion1) 的音乐封面副屏显示
 
-兼容音乐软件：netease,qq,kugou,kuwo,soda,spotify,apple,ayna,potplayer,foobar,lx,huahua,musicfree,bq (参见 [NowPlayingService](https://github.com/Widdit/now-playing-service?tab=readme-ov-file) 说明)
+兼容音乐软件：netease,qq,kugou,kuwo,soda,spotify,apple,ayna,potplayer,foobar,lx,huahua,musicfree,bq (参见 [NowPlayingService](https://github.com/Widdit/now-playing-service/blob/master/external_programs/AudioService/GetMusicStatus/Program.cs) 说明)
 
 # 使用
 
 1. 修改 software_config.yaml 内的 `Music_platform` 配置项目，使其为上述音乐软件参数名字之一
-2. exe 文件直接双击运行。python 源码用户请使用 python=3.10 环境，命令行运行 `pip install -r requirements.txt` 安装依赖后执行 `python main.py`
+2. 运行方式
+    1. 从本项目 releases 下载的压缩包解压后，找到 exe 文件直接双击运行。
+    2. python 源码用户请使用 python=3.10 环境，命令行运行 `pip install -r requirements.txt` 安装依赖。然后从 [NowPlayingService](https://github.com/Widdit/now-playing-service/tree/master/Assets/AudioService) 下载 AudioService 文件夹内的文件，并修改配置文件 software_config.yaml 内的 `GetMusicStatus_position` 配置项目，使其指向下载下来的文件夹内的 `GetMusicStatus.exe`。最后执行 `python main.py` 运行本项目。
 
 # 多视角融合
 
