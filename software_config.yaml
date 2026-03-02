@@ -21,3 +21,5 @@ Cover_size_percent: 0.9
 Cover_y_position_percent: 0.05
 # 控制按钮
 Control_y_position_percent: 0.93
+# 字体
+Font_style: "msyh.ttc"

@@ -23,7 +23,7 @@ class MusicPlayerGenerator:
         self.blur_bg_data = None
         
         # 字体设置：黑体
-        self.font_path = "simhei.ttf" 
+        self.font_path = my_config.get("Font_style", "msyh.ttc")
 
     def _guided_filter(self, I, p, winSize, eps):
         """
