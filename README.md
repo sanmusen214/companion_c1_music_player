@@ -1,4 +1,4 @@
-<img src="./docs/imgs/picfuse.webp" style="height:720px"/>
+<img src="./docs/imgs/picfuse.webp"/>
 
 # companion_c1_music_player
 
