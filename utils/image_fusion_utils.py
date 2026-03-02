@@ -124,7 +124,7 @@ def synthesize_fusion_frame(quilt_np, config):
     
     rows, cols = 5, 8
     total_views = rows * cols # 40
-    tile_h, tile_w = q_h // rows, q_w // cols  # 800, 450
+    tile_h, tile_w = q_h // rows, q_w // cols
     screen_h, screen_w = 2560, 1440
     
     # 生成屏幕坐标网格 (y, x)
