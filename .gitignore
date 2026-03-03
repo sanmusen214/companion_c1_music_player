@@ -1,3 +1,6 @@
+# package
+*.nsi
+
 # source
 *.jpg
 *.png
@@ -26,3 +29,6 @@ __pycache__/
 # IDE
 .vscode/
 .idea/
+
+# important: keep the spec file
+!自由象限 C1 音乐副屏.spec

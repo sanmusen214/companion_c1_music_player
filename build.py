@@ -10,11 +10,8 @@ target_name = "自由象限 C1 音乐副屏"
 # icon.ico 
 subprocess.run([
     "pyinstaller",
-    f'--name={target_name}',
-    "main.py",
-    "--noconsole",
-    "-y",
-    "--icon=assets/icon.ico",
+    "自由象限 C1 音乐副屏.spec",
+    "-y"
 ])
 
 target_dir = f"dist/{target_name}"
@@ -32,6 +29,9 @@ if os.path.exists(target_dir):
     print("图标文件复制成功！")
 else:
     print(f"错误：等待超时，未找到目录 {target_dir}")
+# 创建 cache_data 目录
+cache_data_dir = os.path.join(target_dir, "cache_data")
+os.makedirs(cache_data_dir, exist_ok=True)
 # 音乐软件
 # 找到配置项里的音乐软件路径
 music_software_path = my_config.get('GetMusicStatus_position', '')
