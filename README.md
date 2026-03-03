@@ -8,6 +8,8 @@
 
 # 使用
 
+> 不管是何种运行方式，电脑需要为 Windows 64 位系统，且运行过 [OpenStageAI](https://www.openstageai.com/download)
+
 ## 从 Releases 下载
 
 1. 从 [Releases](https://github.com/sanmusen214/companion_c1_music_player/releases) 下载压缩包后解压
@@ -16,9 +18,9 @@
 
 ## 从 源码 运行
 
-1. 请使用 python 3.10.x 环境，clone本项目后，cd进入文件夹，命令行运行 `pip install -r requirements.txt` 安装依赖。
+1. 请使用 python 3.10.x 环境，使用 `git clone https://github.com/sanmusen214/companion_c1_music_player.git` 克隆本项目后，cd进入文件夹，命令行运行 `pip install -r requirements.txt` 安装依赖。
 2. 从 [NowPlayingService](https://github.com/Widdit/now-playing-service/tree/master/Assets/AudioService) 下载 AudioService 文件夹
-3. 修改配置文件 software_config.yaml 内的 `GetMusicStatus_position` 配置项目，使其指向下载下来的 AudioService 文件夹内的 `GetMusicStatus.exe`文件路径。
+3. 修改配置文件 software_config.yaml 内的 `GetMusicStatus_position` 配置项目，对应下载下来的 AudioService 文件夹内的 `GetMusicStatus.exe` 文件路径。
 4. 执行 `python main.py` 运行本项目。
 5. 右键后台图标——音乐平台 修改要检测的音乐平台，否则会无法获取歌曲信息而只有黑色画面。
 
@@ -32,7 +34,7 @@ OpenCv 和 Pillow 对图像通道解释顺序不同。OpenCV 以 BGR 顺序读�
 
 # 打包
 
-安装 pyinstaller 后执行 `python build.py`
+安装 pyinstaller 后执行 `python build.py`, dist 目录内即为打包出来的程序文件夹。
 
 # Thanks
 
