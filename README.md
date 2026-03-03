@@ -4,14 +4,23 @@
 
 适用于裸眼3d自由象限c1屏 (Companion1) 的音乐封面副屏显示
 
-兼容音乐软件：netease,qq,kugou,kuwo,soda,spotify,apple,ayna,potplayer,foobar,lx,huahua,musicfree,bq (参见 [NowPlayingService](https://github.com/Widdit/now-playing-service/blob/master/external_programs/AudioService/GetMusicStatus/Program.cs) 说明)
+兼容音乐软件：netease,qq,kugou,kuwo,soda,spotify,apple... (参见 [NowPlayingService](https://github.com/Widdit/now-playing-service/blob/master/external_programs/AudioService/GetMusicStatus/Program.cs) 说明)。检测的音乐平台需要启动软件后，右键后台图标——音乐平台 修改要检测的音乐平台，否则会无法获取歌曲信息而只有黑色画面。
 
 # 使用
 
-1. 修改 software_config.yaml 内的 `Music_platform` 配置项目，使其为上述音乐软件参数名字之一
-2. 运行方式
-    1. 从本项目 releases 下载的压缩包解压后，找到 exe 文件直接双击运行。
-    2. python 源码用户请使用 python=3.10 环境，命令行运行 `pip install -r requirements.txt` 安装依赖。然后从 [NowPlayingService](https://github.com/Widdit/now-playing-service/tree/master/Assets/AudioService) 下载 AudioService 文件夹内的文件，并修改配置文件 software_config.yaml 内的 `GetMusicStatus_position` 配置项目，使其指向下载下来的文件夹内的 `GetMusicStatus.exe`。最后执行 `python main.py` 运行本项目。
+## 从 Releases 下载
+
+1. 从 [Releases](https://github.com/sanmusen214/companion_c1_music_player/releases) 下载压缩包后解压
+2. 双击 exe 即可运行
+3. 右键后台图标——音乐平台 修改要检测的音乐平台，否则会无法获取歌曲信息而只有黑色画面。
+
+## 从 源码 运行
+
+1. 请使用 python 3.10.x 环境，clone本项目后，cd进入文件夹，命令行运行 `pip install -r requirements.txt` 安装依赖。
+2. 从 [NowPlayingService](https://github.com/Widdit/now-playing-service/tree/master/Assets/AudioService) 下载 AudioService 文件夹
+3. 修改配置文件 software_config.yaml 内的 `GetMusicStatus_position` 配置项目，使其指向下载下来的 AudioService 文件夹内的 `GetMusicStatus.exe`文件路径。
+4. 执行 `python main.py` 运行本项目。
+5. 右键后台图标——音乐平台 修改要检测的音乐平台，否则会无法获取歌曲信息而只有黑色画面。
 
 # 多视角融合
 
