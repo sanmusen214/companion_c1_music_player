@@ -14,7 +14,6 @@ from utils.config import my_config
 class ScreenShowApp:
     """系统托盘和播放器窗口的主应用程序"""
     def __init__(self):
-        self.version = "1.0.1"
         # 显示器基本参数
         self.monitor_true_width = 1440
         self.monitor_true_height = 2560
@@ -102,7 +101,7 @@ class ScreenShowApp:
 
         # 创建主菜单项
         menu_items = [
-            pystray.MenuItem(f'C1 音乐副屏 {self.version}', None, enabled=False),
+            pystray.MenuItem(f'C1 音乐副屏 v{my_config.version}', None, enabled=False),
             # 添加子菜单
             pystray.MenuItem('音乐平台', platform_menu),
             pystray.MenuItem('B站: 三木森桑', lambda: webbrowser.open("https://space.bilibili.com/7331920")),

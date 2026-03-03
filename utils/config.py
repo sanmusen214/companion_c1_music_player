@@ -5,6 +5,7 @@ class ConfigManager:
     """配置管理器类"""
     
     def __init__(self, config_path: str = 'config.yaml'):
+        self.version = "1.0.1"
         self.config_path = config_path
         self.config = self._load_config()
     
@@ -49,6 +50,8 @@ class ConfigManager:
         if target_path is None:
             target_path = self.config_path
         try:
+            # 在最后加一个 version 字段，方便查看当前配置版本
+            self.config['version'] = self.version
             with open(target_path, 'w', encoding='utf-8') as file:
                 # 使用sort_keys=False保持原有字典顺序
                 yaml.dump(self.config, file, allow_unicode=True, sort_keys=False)

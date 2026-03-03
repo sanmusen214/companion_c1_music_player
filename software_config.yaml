@@ -23,3 +23,4 @@ Control_y_position_percent_desc: 控制按钮
 Control_y_position_percent: 0.93
 Font_style_desc: 字体
 Font_style: msyh.ttc
+version: 1.0.1
