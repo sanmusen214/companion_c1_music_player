@@ -15,7 +15,7 @@
 
 # 多视角融合
 
-`utils/image_fusion_utils.py` 里的 `synthesize_fusion_frame` 能够将输入的 quilt_np (由5行8列不同视角的图像组成。从第一行开始从左到右依次是环绕被视物体逆时针方向观察的视角图像) 根据解析后的屏幕配置文件（解析方法在 `utils/config.py`）转换为光流合成后的图像（高2560宽1440）
+`utils/image_fusion_utils.py` 里的 `synthesize_fusion_frame` 能够将输入的 quilt_np (由5行8列不同视角的图像组成。从第一行开始从左到右依次是环绕被视物体逆时针方向观察的视角图像) 根据解析后的屏幕配置文件（解析方法在同py文件底部）转换为光流合成后的图像（高2560宽1440）
 
 # 注意
 
