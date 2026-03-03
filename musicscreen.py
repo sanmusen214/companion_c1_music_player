@@ -19,8 +19,12 @@ class ScreenShowApp:
         self.monitor_true_height = 2560
         # 应用状态控制
         self.is_running = True # 应用主循环运行状态
+        
+        # 音乐平台配置
+        self.current_platform = my_config.get("Music_platform", "netease")
+        
         # 监控器
-        self.music_monitor = MusicInfoMonitor()
+        self.music_monitor = MusicInfoMonitor(self.current_platform)
         self.music_monitor.start_monitoring()
         # 现在绘制的歌曲status的缓存id
         self.now_cache_id = ""
@@ -40,14 +44,66 @@ class ScreenShowApp:
         # 启动系统托盘图标
         self.setup_tray_icon()
         
+    def update_music_platform(self, icon, item):
+        """更新音乐平台的回调函数"""
+        platform_name = str(item)
+        if platform_name == self.current_platform:
+            return
+
+        print(f"Switching music platform to: {platform_name}")
+        self.current_platform = platform_name
+        
+        # 更新配置并保存
+        my_config.set("Music_platform", platform_name)
+        my_config.save_config()
+        
+        # 重启监控器
+        print("Stopping current monitor...")
+        self.music_monitor.stop_monitoring()
+        # 在新线程中重新启动，避免阻塞托盘
+        threading.Thread(target=self._restart_monitor_process, args=(platform_name,), daemon=True).start()
+
+    def _restart_monitor_process(self, platform_name):
+        time.sleep(0.5) # 等待线程清理
+        print(f"Starting monitor for {platform_name}...")
+        self.music_monitor = MusicInfoMonitor(platform_name)
+        self.music_monitor.start_monitoring()
+
     def setup_tray_icon(self):
         """创建系统托盘图标和菜单"""
         # 创建托盘图标图像
         image = Image.open("assets/icon.ico")
         
-        # 创建菜单项
+        # 音乐平台列表
+        platforms = [
+            "netease", "qq", "kugou", "kuwo", "soda", "spotify", "apple", 
+            "ayna", "potplayer", "foobar", "lx", "huahua", "musicfree", 
+            "bq", "aimp", "youtube", "miebo", "yesplay", "cider"
+        ]
+        
+        # 创建平台选择子菜单项
+        # 注意：这里需要通过闭包捕获 platform_name，或者直接用 lambda item: ... 
+        # 但 checked需要比较 item 和 self.current_platform
+        
+        def on_click(icon, item):
+            self.update_music_platform(icon, item)
+
+        platform_items = []
+        for p in platforms:
+            platform_items.append(pystray.MenuItem(
+                p, 
+                on_click, 
+                checked=lambda item: str(item) == self.current_platform,
+                radio=True
+            ))
+            
+        platform_menu = pystray.Menu(*platform_items)
+
+        # 创建主菜单项
         menu_items = [
-            pystray.MenuItem('C1 音乐副屏app', None),
+            pystray.MenuItem('C1 音乐副屏app', None, enabled=False),
+            # 添加子菜单
+            pystray.MenuItem('音乐平台', platform_menu),
             pystray.MenuItem('B站: 三木森桑', lambda: webbrowser.open("https://space.bilibili.com/7331920")),
             pystray.MenuItem('GitHub: sanmusen214', lambda: webbrowser.open("https://github.com/sanmusen214")),
             pystray.MenuItem('退出', self.quit_action)

@@ -8,13 +8,13 @@ from utils.config import my_config
 class MusicInfoMonitor:
     """音乐信息监控器，负责运行外部程序并解析输出"""
     
-    def __init__(self):
+    def __init__(self, platform):
         self.process = None
         self.is_running = False
         self.output_queue = queue.Queue()
         self.process_thread = None
         self.parser_thread = None
-        self.music_platform = my_config.get("Music_platform", "netease")
+        self.music_platform = platform
         # 监控输出的 歌曲名字，艺术家，播放状态
         self.now_music_info = {
             "title": "",

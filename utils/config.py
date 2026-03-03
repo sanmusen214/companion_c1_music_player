@@ -42,7 +42,7 @@ class ConfigManager:
         """
         self.config[key] = value
 
-    def _save_config(self, target_path = None):
+    def save_config(self, target_path = None):
         """
         保存配置到YAML文件
         """
@@ -50,7 +50,8 @@ class ConfigManager:
             target_path = self.config_path
         try:
             with open(target_path, 'w', encoding='utf-8') as file:
-                yaml.safe_dump(self.config, file)  # 使用safe_dump避免安全风险
+                # 使用sort_keys=False保持原有字典顺序
+                yaml.dump(self.config, file, allow_unicode=True, sort_keys=False)
                 print(f"配置文件保存成功: {target_path}")
         except Exception as e:
             print(f"保存配置文件时出错: {e}")
