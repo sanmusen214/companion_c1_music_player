@@ -6,7 +6,8 @@ class ConfigManager:
     
     def __init__(self):
         self.version = "1.0.1"
-        self.target_name = "C1音乐副屏"
+        # 目标软件名称，用于创建专门的AppData目录，避免权限问题和路径问题
+        self.target_name = "C1music"
         # 在用户的AppData目录下创建一个专门的文件夹来存储配置文件，避免权限问题和路径问题
         self.app_data_dir = os.path.expandvars(r"%APPDATA%\{}".format(self.target_name))
         os.makedirs(self.app_data_dir, exist_ok=True)
