@@ -4,20 +4,35 @@ import yaml
 class ConfigManager:
     """配置管理器类"""
     
-    def __init__(self, config_path: str = 'config.yaml'):
+    def __init__(self):
         self.version = "1.0.1"
         self.target_name = "C1音乐副屏"
-        self.config_path = config_path
-        self.config = self._load_config()
+        # 在用户的AppData目录下创建一个专门的文件夹来存储配置文件，避免权限问题和路径问题
         self.app_data_dir = os.path.expandvars(r"%APPDATA%\{}".format(self.target_name))
         os.makedirs(self.app_data_dir, exist_ok=True)
+        # 配置文件路径，放在AppData目录下，避免权限问题和路径问题
+        self.config_path = os.path.join(self.app_data_dir, "software_config.yaml")
+        self.config = self._load_config()
     
     def _load_config(self):
         """
         安全加载YAML配置文件
         """
         if not os.path.exists(self.config_path):
-            raise FileNotFoundError(f"配置文件不存在: {self.config_path}")
+            # 将当前文件夹的 software_config.yaml 复制到 config_path 目录下，作为初始配置文件
+            if not os.path.exists('software_config.yaml'):
+                print(f"初始配置文件 'software_config.yaml' 不存在，请确保它与当前脚本在同一目录下。")
+                return {}
+            else:
+                try:
+                    with open('software_config.yaml', 'r', encoding='utf-8') as src_file:
+                        config_content = src_file.read()
+                    with open(self.config_path, 'w', encoding='utf-8') as dst_file:
+                        dst_file.write(config_content)
+                    print(f"初始配置文件已复制到: {self.config_path}")
+                except Exception as e:
+                    print(f"复制初始配置文件时出错: {e}")
+                    return {}
         
         try:
             with open(self.config_path, 'r', encoding='utf-8') as file:
@@ -62,4 +77,4 @@ class ConfigManager:
         except Exception as e:
             print(f"保存配置文件时出错: {e}")
 
-my_config = ConfigManager('software_config.yaml')
+my_config = ConfigManager()
