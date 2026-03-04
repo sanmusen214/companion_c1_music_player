@@ -8,8 +8,8 @@ import sys
 import webbrowser
 from screeninfo import get_monitors
 
-from utils import MusicPlayerGenerator, device_config, synthesize_fusion_frame, hide_window_from_taskbar, MusicCachePool, generate_cache_id, load_file2RGBImage, download_cover_image_from_keyword, MusicInfoMonitor
 from utils.config import my_config
+from utils import MusicPlayerGenerator, device_config, synthesize_fusion_frame, hide_window_from_taskbar, MusicCachePool, generate_cache_id, load_file2RGBImage, download_cover_image_from_keyword, MusicInfoMonitor
 
 class ScreenShowApp:
     """系统托盘和播放器窗口的主应用程序"""

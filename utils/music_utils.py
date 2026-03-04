@@ -166,7 +166,7 @@ def download_cover_image(song_id):
     res = requests.get(final_pic_url)
     if res.status_code != 200:
         return None
-    picpath = "cover.jpg"
+    picpath = os.path.join(my_config.app_data_dir, "cover.jpg")
     with open(picpath, "wb") as f:
         f.write(res.content)
     return picpath
