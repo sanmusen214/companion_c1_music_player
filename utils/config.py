@@ -6,8 +6,11 @@ class ConfigManager:
     
     def __init__(self, config_path: str = 'config.yaml'):
         self.version = "1.0.1"
+        self.target_name = "C1音乐副屏"
         self.config_path = config_path
         self.config = self._load_config()
+        self.app_data_dir = os.path.expandvars(r"%APPDATA%\{}".format(self.target_name))
+        os.makedirs(self.app_data_dir, exist_ok=True)
     
     def _load_config(self):
         """

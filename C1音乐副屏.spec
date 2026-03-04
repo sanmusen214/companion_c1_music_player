@@ -21,7 +21,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='自由象限 C1 音乐副屏',
+    name='C1音乐副屏',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -33,7 +33,6 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=['assets\\icon.ico'],
-    uac_admin=True,
 )
 coll = COLLECT(
     exe,
@@ -42,5 +41,5 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='自由象限 C1 音乐副屏',
+    name='C1音乐副屏',
 )

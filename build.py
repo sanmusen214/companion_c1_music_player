@@ -6,11 +6,11 @@ import os
 import shutil
 from utils.config import my_config
 # 打包
-target_name = "自由象限 C1 音乐副屏"
+target_name = my_config.target_name
 # icon.ico 
 subprocess.run([
     "pyinstaller",
-    "自由象限 C1 音乐副屏.spec",
+    f"{target_name}.spec",
     "-y"
 ])
 
