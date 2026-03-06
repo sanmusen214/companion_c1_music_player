@@ -4,6 +4,7 @@ from .image_save_load import save_BGRimage2file
 import base64
 import hashlib
 from .config import my_config
+import sys
 # 缓存缓存池
 def simple_hash(s):
     """简单的base64 hash函数"""
@@ -30,6 +31,9 @@ class MusicCachePool:
     def __init__(self, max_size=30):
         self.cache_dict = {} # 3.8后的 dict 有顺序键特性，可以用作FIFO
         self.read_folder_path = os.path.join(my_config.app_data_dir, "cache_data/")
+        if "--dev" in sys.argv:
+            print("Running in development mode, using local cache_data folder")
+            self.read_folder_path = os.path.join(os.getcwd(), "cache_data/")
         self.file_extension = ".png"
         self.max_size = max_size
         self.initialize()
