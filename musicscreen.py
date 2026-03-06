@@ -8,8 +8,7 @@ import sys
 import webbrowser
 from screeninfo import get_monitors
 
-from utils.config import my_config
-from utils import MusicPlayerGenerator, device_config, synthesize_fusion_frame, hide_window_from_taskbar, MusicCachePool, generate_cache_id, load_file2RGBImage, download_cover_image_from_keyword, MusicInfoMonitor
+from utils import MusicPlayerGenerator, device_config, synthesize_fusion_frame, hide_window_from_taskbar, MusicCachePool, generate_cache_id, load_file2RGBImage, download_cover_image_from_keyword, MusicInfoMonitor, my_i18n, my_config
 
 class ScreenShowApp:
     """系统托盘和播放器窗口的主应用程序"""
@@ -101,12 +100,11 @@ class ScreenShowApp:
 
         # 创建主菜单项
         menu_items = [
-            pystray.MenuItem(f'C1 音乐副屏 v{my_config.version}', None, enabled=False),
+            pystray.MenuItem(f'{my_i18n.get("C1_music_screen")} v{my_config.version}', None, enabled=False),
             # 添加子菜单
-            pystray.MenuItem('音乐平台', platform_menu),
-            pystray.MenuItem('B站: 三木森桑', lambda: webbrowser.open("https://space.bilibili.com/7331920")),
+            pystray.MenuItem(my_i18n.get("music_platform"), platform_menu),
             pystray.MenuItem('GitHub: sanmusen214', lambda: webbrowser.open("https://github.com/sanmusen214")),
-            pystray.MenuItem('退出', self.quit_action)
+            pystray.MenuItem(my_i18n.get("quit_button"), self.quit_action)
         ]
         
         # 创建托盘图标
