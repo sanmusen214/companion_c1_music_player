@@ -179,7 +179,7 @@ class ScreenShowApp:
         self.img_content = final_fusion_image
         # 将final_tile_image加入缓存池
         self.tile_cache_pool.add_key(generate_cache_id(music_info), final_fusion_image)
-        print(f"Generated new tile image for music: {music_info.get('title', '')} - {music_info.get('artist', '')}")
+        print(f"Generated new tile image")
         # time.sleep(0.1)
         # 此外再将 反着的播放状态 缓存一份，方便切换播放状态时快速加载
         # music_info["playback_status"] = 0 if music_info.get('playback_status', 1) == 1 else 1
@@ -231,7 +231,7 @@ class ScreenShowApp:
             music_info = self.music_monitor.now_music_info.copy()
             music_cache_id = generate_cache_id(music_info)
             if music_cache_id != self.now_cache_id and music_info.get("title", "") != "": # 歌曲信息有变化且不为空
-                print(f"Music changed, {music_info.get('title', '')} - {music_info.get('artist', '')} cache_id: {music_cache_id}")
+                print(f"Music changed, cache_id: {music_cache_id}")
                 self.on_music_updated(music_cache_id)
                 
             
