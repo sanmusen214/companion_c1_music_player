@@ -159,9 +159,7 @@ class ScreenShowApp:
         if img_w == self.monitor_true_width and img_h == self.monitor_true_height:
             frame = img
         else:
-            print(f"图片尺寸与显示器不匹配，跳过绘制")
-            print(f"图片尺寸: {img_w}x{img_h}")
-            print(f"显示器尺寸: {self.monitor_true_width}x{self.monitor_true_height}")
+            print(f"Warning: Image size {img_w}x{img_h} does not match monitor size {self.monitor_true_width}x{self.monitor_true_height}. Skip")
         return frame
     
     def generate_image(self):
@@ -170,7 +168,7 @@ class ScreenShowApp:
         music_info = self.music_monitor.now_music_info.copy()
         cover_path = download_cover_image_from_keyword(music_info)
         if cover_path is None:
-            print("下载封面图失败")
+            print("Failed to download cover image, using default cover")
         else:
             music_info["cover_path"] = cover_path
         # 生成新的tile图片，并进行fusion处理
@@ -211,7 +209,7 @@ class ScreenShowApp:
 
     def run(self):
         """主运行循环"""
-        print("应用已启动, 快捷键: [ESC] 退出")
+        print("Starting main loop...")
         self.img_content = None
         
         while self.is_running:
@@ -239,11 +237,8 @@ class ScreenShowApp:
             
             # 显示帧 反转显示
             cv2.imshow(self.window_name, frame)
-            
-            # 处理键盘输入
+
+            # 处理键盘输入，刷新图像缓冲区
             key = cv2.waitKey(100) & 0xFF
-            if key == 27:  # ESC键退出
-                self.quit_action()
-                break
             
             time.sleep(0.05)  # 控制更新频率

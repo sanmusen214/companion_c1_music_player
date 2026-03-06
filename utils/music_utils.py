@@ -3,6 +3,7 @@ import subprocess
 import threading
 import queue
 import time
+import traceback
 from utils.config import my_config
 
 class MusicInfoMonitor:
@@ -65,7 +66,7 @@ class MusicInfoMonitor:
                 time.sleep(0.1)  # 避免过度占用CPU
                     
         except Exception as e:
-            print(f"监控进程出错: {e}")
+            print(f"Error running music status process: {e}, {traceback.format_exc()}")
         finally:
             if self.process:
                 self.process.terminate()
@@ -106,7 +107,7 @@ class MusicInfoMonitor:
             except queue.Empty:
                 continue
             except Exception as e:
-                print(f"解析输出时出错: {e}")
+                print(f"Error parsing music status output: {e}, {traceback.format_exc()}")
                 
     def _parse_playback_status(self, status_line):
         """解析播放状态"""
@@ -128,7 +129,7 @@ class MusicInfoMonitor:
                 # 如果不符合标准格式，整个字符串作为标题
                 return {"title": music_line.strip(), "artist": "Unknown"}
         except:
-            return {"title": "解析错误", "artist": "Unknown"}
+            return {"title": "Error Parsed Result", "artist": "Unknown"}
 
 import os
 appdata_path = os.getenv('APPDATA')
@@ -178,5 +179,5 @@ def download_cover_image_from_keyword(music_info):
         print(f"Downloaded cover image to {picpath}")
         return picpath
     except Exception as e:
-        print(f"下载封面图失败: {e}")
+        print(f"Error downloading cover image: {e}, {traceback.format_exc()}")
         return None

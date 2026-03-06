@@ -1,4 +1,5 @@
 from musicscreen import ScreenShowApp
+import traceback
 
 if __name__ == "__main__":
     app = ScreenShowApp()
@@ -8,5 +9,5 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         app.quit_action()
     except Exception as e:
-        print(f"发生错误: {e}")
+        print(f"Error {e} occurred: {traceback.format_exc()}")
         app.quit_action()

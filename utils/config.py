@@ -1,6 +1,7 @@
 import os
 import yaml
 import sys
+import traceback
 
 class ConfigManager:
     """配置管理器类"""
@@ -16,7 +17,7 @@ class ConfigManager:
         self.config_path = os.path.join(self.app_data_dir, "software_config.yaml")
         # 解析启动时的命令行参数，支持 --dev 模式，在当前目录下使用 software_config.yaml 作为配置文件，方便开发调试
         if '--dev' in sys.argv:
-            print("开发模式: 使用当前目录下的 software_config.yaml 作为配置文件")
+            print("Running in development mode, using local software_config.yaml")
             self.config_path = os.path.join(os.getcwd(), "software_config.yaml")
         self.config = self._load_config()
     
@@ -27,7 +28,7 @@ class ConfigManager:
         if not os.path.exists(self.config_path):
             # 将当前文件夹的 software_config.yaml 复制到 config_path 目录下，作为初始配置文件
             if not os.path.exists('software_config.yaml'):
-                print(f"初始配置文件 'software_config.yaml' 不存在，请确保它与当前脚本在同一目录下。")
+                print(f"Error: Initial configuration file 'software_config.yaml' not found in current directory {os.getcwd()}")
                 return {}
             else:
                 try:
@@ -35,9 +36,9 @@ class ConfigManager:
                         config_content = src_file.read()
                     with open(self.config_path, 'w', encoding='utf-8') as dst_file:
                         dst_file.write(config_content)
-                    print(f"初始配置文件已复制到: {self.config_path}")
+                    print(f"Initial configuration file copied to {self.config_path}")
                 except Exception as e:
-                    print(f"复制初始配置文件时出错: {e}")
+                    print(f"Error copying initial configuration file: {traceback.format_exc()}")
                     return {}
         
         try:
@@ -45,14 +46,14 @@ class ConfigManager:
                 config = yaml.safe_load(file)  # 使用safe_load避免安全风险[4,8](@ref)
                 if config is None:
                     return {}
-                print(f"配置文件加载成功: {self.config_path}")
+                print(f"Configuration loaded successfully from {self.config_path}")
                 print(f"Music Status Position: {config.get('GetMusicStatus_position')}")
                 return config
         except yaml.YAMLError as e:
-            print(f"YAML解析错误: {e}")
+            print(f"Error parsing YAML configuration file: {traceback.format_exc()}")
             return {}
         except Exception as e:
-            print(f"读取配置文件时出错: {e}")
+            print(f"Error loading configuration file: {traceback.format_exc()}")
             return {}
     
     def get(self, key, default = None):
@@ -79,8 +80,8 @@ class ConfigManager:
             with open(target_path, 'w', encoding='utf-8') as file:
                 # 使用sort_keys=False保持原有字典顺序
                 yaml.dump(self.config, file, allow_unicode=True, sort_keys=False)
-                print(f"配置文件保存成功: {target_path}")
+                print(f"Configuration saved successfully to {target_path}")
         except Exception as e:
-            print(f"保存配置文件时出错: {e}")
+            print(f"Error saving configuration file: {traceback.format_exc()}")
 
 my_config = ConfigManager()

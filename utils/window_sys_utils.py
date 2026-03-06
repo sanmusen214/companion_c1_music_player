@@ -15,6 +15,5 @@ def hide_window_from_taskbar(window_title):
         win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE, new_style)
         # 刷新显示
         win32gui.ShowWindow(hwnd, win32con.SW_SHOW)
-        # print(f"已成功隐藏窗口 '{window_title}' 在任务栏的图标。")
     else:
-        print(f"未找到标题为 '{window_title}' 的窗口。")
+        print(f"Could not find window with title: {window_title}")

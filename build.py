@@ -18,17 +18,17 @@ target_dir = f"dist/{target_name}"
 # 配置文件
 if os.path.exists(target_dir):
     shutil.copy("software_config.yaml", f"{target_dir}/software_config.yaml")
-    print("配置文件复制成功！")
+    print("Config file copied successfully!")
 else:
-    print(f"错误：等待超时，未找到目录 {target_dir}")
+    print(f"Error: Timeout waiting, directory {target_dir} not found")
 # 图标文件
 if not os.path.exists(f"{target_dir}/assets"):
     os.makedirs(f"{target_dir}/assets", exist_ok=True)
 if os.path.exists(target_dir):
     shutil.copy("assets/icon.ico", f"{target_dir}/assets/icon.ico")
-    print("图标文件复制成功！")
+    print("Icon file copied successfully!")
 else:
-    print(f"错误：等待超时，未找到目录 {target_dir}")
+    print(f"Error: Timeout waiting, directory {target_dir} not found")
 # 创建 cache_data 目录
 cache_data_dir = os.path.join(target_dir, "cache_data")
 os.makedirs(cache_data_dir, exist_ok=True)
@@ -39,7 +39,7 @@ music_software_dir = os.path.dirname(music_software_path)
 if os.path.exists(music_software_dir):
     dest_music_software_dir = os.path.join(target_dir, "music_info_software")
     shutil.copytree(music_software_dir, dest_music_software_dir)
-    print("音乐软件文件复制成功！")
+    print("Music software copied successfully!")
     # 修改配置文件中的GetMusicStatus_position的路径为相对路径到music_info_software目录下的GetMusicStatus.exe
     new_music_software_path = os.path.join("music_info_software", os.path.basename(music_software_path))
     # my_config.set('GetMusicStatus_position', new_music_software_path)
@@ -58,6 +58,6 @@ if os.path.exists(music_software_dir):
     # 保存修改后的配置文件
     with open(f'{target_dir}/software_config.yaml', 'w', encoding='utf-8') as f:
         f.write('\n'.join(now_yaml_content_lines))
-    print("配置文件更新成功！")
+    print("Configuration file updated successfully!")
 else:
-    print(f"错误：未找到音乐软件目录 {music_software_dir}")
+    print(f"Error: Music software directory {music_software_dir} not found")

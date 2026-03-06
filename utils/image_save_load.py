@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 from PIL import Image
 import os
+import traceback
 
 def load_file2RGBImage(path):
     """ 使用PIL加载图片并转换为RGB格式 """
@@ -19,7 +20,7 @@ def save_BGRimage2file(image_array: np.array, output_path: str):
     if success:
         with open(output_path, "wb") as f:
             f.write(buffer)
-        print(f"缓存图片已保存到: {output_path}")
+        print(f"Image saved successfully: {output_path}")
     else:
-        print(f"缓存图片保存失败: {output_path}")
+        print(f"Error encoding image to {ext} format for saving to {output_path}, {traceback.format_exc()}")
     
