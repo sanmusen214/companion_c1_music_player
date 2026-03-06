@@ -1,5 +1,6 @@
 import os
 import yaml
+import sys
 
 class ConfigManager:
     """配置管理器类"""
@@ -13,6 +14,10 @@ class ConfigManager:
         os.makedirs(self.app_data_dir, exist_ok=True)
         # 配置文件路径，放在AppData目录下，避免权限问题和路径问题
         self.config_path = os.path.join(self.app_data_dir, "software_config.yaml")
+        # 解析启动时的命令行参数，支持 --dev 模式，在当前目录下使用 software_config.yaml 作为配置文件，方便开发调试
+        if '--dev' in sys.argv:
+            print("开发模式: 使用当前目录下的 software_config.yaml 作为配置文件")
+            self.config_path = os.path.join(os.getcwd(), "software_config.yaml")
         self.config = self._load_config()
     
     def _load_config(self):

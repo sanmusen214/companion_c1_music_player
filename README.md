@@ -13,15 +13,15 @@
 ## 从 Releases 下载
 
 1. 从 [Releases](https://github.com/sanmusen214/companion_c1_music_player/releases) 下载压缩包后解压
-2. 双击 exe 即可运行
+2. 双击 exe 即可运行，配置文件在 `AppData/Roaming/C1music/` 内。
 3. 右键后台图标——音乐平台 修改要检测的音乐平台，否则会无法获取歌曲信息而只有黑色画面。
 
-## 从 源码 运行
+## 从 源码 运行 (开发)
 
 1. 请使用 python 3.10.x 环境，使用 `git clone https://github.com/sanmusen214/companion_c1_music_player.git` 克隆本项目后，cd进入文件夹，命令行运行 `pip install -r requirements.txt` 安装依赖。
 2. 从 [NowPlayingService](https://github.com/Widdit/now-playing-service/tree/master/Assets/AudioService) 下载 AudioService 文件夹
 3. 修改配置文件 software_config.yaml 内的 `GetMusicStatus_position` 配置项目，对应下载下来的 AudioService 文件夹内的 `GetMusicStatus.exe` 文件路径。
-4. 执行 `python main.py` 运行本项目。
+4. 执行 `python main.py --dev` 运行本项目， `--dev` 参数会使得从当前运行目录读取配置文件。
 5. 右键后台图标——音乐平台 修改要检测的音乐平台，否则会无法获取歌曲信息而只有黑色画面。
 
 # 多视角融合
