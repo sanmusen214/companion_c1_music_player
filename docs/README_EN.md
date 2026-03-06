@@ -3,9 +3,9 @@
 # companion_c1_music_player
 
 <div align="center">
-<!-- markdownlint-restore -->
-[[中文]](../README.md) | [English]
+<a href="../README.md">[中文]</a> | [English]
 </div>
+<br/>
 
 Music cover secondary screen display for Naked-eye 3D Freedom Quadrant C1 screen (Companion1).
 

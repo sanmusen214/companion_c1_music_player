@@ -3,9 +3,9 @@
 # companion_c1_music_player
 
 <div align="center">
-<!-- markdownlint-restore -->
-[中文] | [[English]](./docs/README_EN.md)
+[中文] | <a href="./docs/README_EN.md">[English]</a>
 </div>
+<br/>
 
 适用于裸眼3d自由象限c1屏 (Companion1) 的音乐封面副屏显示
 
