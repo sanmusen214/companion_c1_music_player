@@ -23,7 +23,7 @@ class MusicInfoMonitor:
             "playback_status": 1 # 1: 播放中, 0: 暂停
         }
         # 防止歌曲切换时播放状态来回切换，状态切换需要累计确认三次
-        self.playback_confirm_count = 0
+        self.playback_confirm_count = -1
         self.playback_confirm_status = 1
         self.playback_confirm_max = 3
         
@@ -84,11 +84,13 @@ class MusicInfoMonitor:
                     # 防抖处理 播放状态需要连续三次确认才更新
                     if this_playback_status != self.playback_confirm_status:
                         # 状态变化，重置计数
+                        # print(f"Playback status changed to {this_playback_status}, resetting confirm count")
                         self.playback_confirm_status = this_playback_status
-                        self.playback_confirm_count = 1
+                        self.playback_confirm_count = -1
                     else:
                         # 状态相同，计数+1
                         self.playback_confirm_count = (self.playback_confirm_count + 1) % (self.playback_confirm_max + 1)
+                        # print(f"Playback status: {this_playback_status}, confirm count: {self.playback_confirm_count}")
                         if self.playback_confirm_count >= self.playback_confirm_max:
                             playback_status = self.playback_confirm_status
                             self.now_music_info["playback_status"] = playback_status
