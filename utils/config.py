@@ -12,13 +12,13 @@ class ConfigManager:
         self.target_name = "C1music"
         # 在用户的AppData目录下创建一个专门的文件夹来存储配置文件，避免权限问题和路径问题
         self.app_data_dir = os.path.expandvars(r"%APPDATA%\{}".format(self.target_name))
+        # 解析启动时的命令行参数，支持 --dev 模式，在当前目录下存储文件
+        if '--dev' in sys.argv:
+            print("Running in development mode, using local data directory")
+            self.app_data_dir = os.getcwd()
         os.makedirs(self.app_data_dir, exist_ok=True)
         # 配置文件路径，放在AppData目录下，避免权限问题和路径问题
         self.config_path = os.path.join(self.app_data_dir, "software_config.yaml")
-        # 解析启动时的命令行参数，支持 --dev 模式，在当前目录下使用 software_config.yaml 作为配置文件，方便开发调试
-        if '--dev' in sys.argv:
-            print("Running in development mode, using local software_config.yaml")
-            self.config_path = os.path.join(os.getcwd(), "software_config.yaml")
         self.config = self._load_config()
     
     def _load_config(self):
