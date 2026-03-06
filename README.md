@@ -2,6 +2,11 @@
 
 # companion_c1_music_player
 
+<div align="center">
+<!-- markdownlint-restore -->
+[中文] | [[English]](./docs/README_EN.md)
+</div>
+
 适用于裸眼3d自由象限c1屏 (Companion1) 的音乐封面副屏显示
 
 兼容音乐软件：netease,qq,kugou,kuwo,soda,spotify,apple... (参见 [NowPlayingService](https://github.com/Widdit/now-playing-service/blob/master/external_programs/AudioService/GetMusicStatus/Program.cs) 说明)。检测的音乐平台需要启动软件后，右键后台图标——音乐平台 修改要检测的音乐平台，否则会无法获取歌曲信息而只有黑色画面。
@@ -32,9 +37,9 @@
 
 OpenCv 和 Pillow 对图像通道解释顺序不同。OpenCV 以 BGR 顺序读取/创建/保存图像，Pillow 以 RGB 顺序读取/创建/保存图像，未使用像素通道转换 `cvtColor` 时，图片存取的库要与图像数组数据的通道顺序对应。
 
-# 打包
+# 打包 (开发)
 
-安装 pyinstaller 后执行 `python build.py`, dist 目录内即为打包出来的程序文件夹。
+安装 pyinstaller 后执行 `python build.py --dev` ( `--dev` 参数会使得从当前运行目录读取配置文件 ), dist 目录内即为打包出来的程序文件夹。
 
 # Thanks
 
