@@ -7,7 +7,7 @@ class ConfigManager:
     """配置管理器类"""
     
     def __init__(self):
-        self.version = "1.0.1"
+        self.version = "1.0.2"
         # 目标软件名称，用于创建专门的AppData目录，避免权限问题和路径问题
         self.target_name = "C1music"
         # 在用户的AppData目录下创建一个专门的文件夹来存储配置文件，避免权限问题和路径问题
