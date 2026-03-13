@@ -23,9 +23,9 @@ class MusicInfoMonitor:
             "playback_status": 1 # 1: 播放中, 0: 暂停
         }
         # 防止歌曲切换时播放状态来回切换，状态切换需要累计确认三次
-        self.playback_confirm_count = -1
+        self.playback_confirm_count = 0
         self.playback_confirm_status = 1
-        self.playback_confirm_max = 5
+        self.playback_confirm_max = 2
         
     def start_monitoring(self):
         """启动监控线程"""
@@ -86,7 +86,7 @@ class MusicInfoMonitor:
                         # 状态变化，重置计数
                         # print(f"Playback status changed to {this_playback_status}, resetting confirm count")
                         self.playback_confirm_status = this_playback_status
-                        self.playback_confirm_count = -1
+                        self.playback_confirm_count = 0
                     else:
                         # 状态相同，计数+1
                         self.playback_confirm_count = (self.playback_confirm_count + 1) % (self.playback_confirm_max + 1)

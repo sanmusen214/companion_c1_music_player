@@ -106,7 +106,7 @@ class MusicPlayerGenerator:
         
         return blurred_pil_image
 
-    def _draw_controls(self, draw, word_offset, color=(220, 220, 220, 200)):
+    def _draw_controls(self, draw, word_offset, color=(220, 220, 220, 255), is_playing = None):
         """绘制几何控制图标"""
         center_x = self.sub_w // 2 + word_offset
         center_y = my_config.get("Control_y_position_percent") * self.sub_h
@@ -120,7 +120,11 @@ class MusicPlayerGenerator:
         lx = center_x - gap
         draw.polygon([(lx, center_y), (lx+pn_width, center_y-s), (lx+pn_width, center_y+s)], fill=color)
         draw.rectangle([lx-pn_ar_w, center_y-s, lx, center_y+s], fill=color)
-        is_playing = self.info.get("playback_status", 0) == 1
+        # 如果is_playing参数不为None，则使用传入的值，否则根据self.info中的播放状态判断
+        if is_playing is not None:
+            is_playing = is_playing
+        else:
+            is_playing = self.info.get("playback_status", 0) == 1
         if is_playing:
             # 播放
             draw.polygon([(center_x-s, center_y-s), (center_x-s, center_y+s), (center_x+s, center_y)], fill=color)
@@ -227,7 +231,7 @@ class MusicPlayerGenerator:
         self._draw_cover(bg_final, cover_img, int(k * self.cover_intensity))
         word_offset = int(k * self.word_intensity)
         self._draw_title_artist(draw, word_offset)
-        self._draw_controls(draw, word_offset)
+        # self._draw_controls(draw, word_offset)
         # ===== 输出 =====
         # Image 绘图后的 RGB 转为 GBR 格式 numpy 输出
         view_cv = cv2.cvtColor(np.array(bg_final), cv2.COLOR_RGB2BGR)
@@ -267,4 +271,24 @@ class MusicPlayerGenerator:
             y_s, x_s = r * self.sub_h, c * self.sub_w
             full_canvas[y_s : y_s + self.sub_h, x_s : x_s + self.sub_w] = view_img
             
+        return full_canvas
+
+    def generate_music_playback_icon_images(self, is_playing):
+        """仅生成下方的音乐音乐控制按钮图标的图片"""
+        full_canvas = np.zeros((self.canvas_h, self.canvas_w, 3), dtype=np.uint8)
+        # 绘制40个视角的控制按钮
+        for idx in range(40):
+            r, c = divmod(idx, 8) # 计算行和列 (5行8列)
+            # 创建 PIL Image 对象
+            view_pil = Image.new("RGB", (self.sub_w, self.sub_h), (0, 0, 0))
+            draw = ImageDraw.Draw(view_pil)
+            
+            word_offset = int((idx - 20) * self.word_intensity)
+            self._draw_controls(draw, word_offset, is_playing=is_playing)
+            
+            # 将绘制好的 PIL 图片转回 numpy 数组，并转换为 BGR 格式 (保持与 create_view 一致)
+            view_img = cv2.cvtColor(np.array(view_pil), cv2.COLOR_RGB2BGR)
+
+            y_s, x_s = r * self.sub_h, c * self.sub_w
+            full_canvas[y_s : y_s + self.sub_h, x_s : x_s + self.sub_w] = view_img
         return full_canvas

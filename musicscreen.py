@@ -10,8 +10,9 @@ import sys
 import webbrowser
 from screeninfo import get_monitors
 import traceback
+import json
 
-from utils import MusicPlayerGenerator, device_config, synthesize_fusion_frame, hide_window_from_taskbar, MusicCachePool, generate_cache_id, load_file2RGBImage, download_cover_image_from_keyword, MusicInfoMonitor, my_i18n, my_config
+from utils import MusicPlayerGenerator, device_config, synthesize_fusion_frame, hide_window_from_taskbar, MusicCachePool, generate_cache_id, load_file2RGBImage, save_BGRimage2file,  download_cover_image_from_keyword, MusicInfoMonitor, my_i18n, my_config
 from utils.music_freq_utils import SpectrumAnalyzer
 
 class ScreenShowApp:
@@ -33,25 +34,20 @@ class ScreenShowApp:
         self.now_cache_id = ""
         # 缓存池
         self.tile_cache_pool = MusicCachePool(max_size=my_config.get("Cache_len", 10))
-        # 现在合成tile图片内容（BGR 数组）
-        self.img_content = None
-        # 现在音乐 cover 图片主题色 ((B, G, R),(B, G, R))，作为频谱颜色的基础
-        self.cover_theme_color = (None, None)
-        # 如果本地有封面图片，则读取并解析主题色
-        cover_path = os.path.join(my_config.app_data_dir, "cover.jpg")
-        try:
-            if os.path.exists(cover_path):
-                cover_content = cv2.imread(cover_path)
-                self.cover_theme_color = SpectrumAnalyzer.get_cover_theme_color(cover_content)
-                print("Loaded last music cover as theme color")
-        except Exception as e:
-            print(f"Error loading cover image for theme color: {e}, {traceback.format_exc()}")
         # tile图片生成器
         self.global_frame_generator = MusicPlayerGenerator(
             my_config.get("Cover_intensity"),
             my_config.get("Background_intensity"),
             my_config.get("Word_intensity"),
         )
+        # 现在合成tile图片内容（BGR 数组）
+        self.img_content = None
+        # 现在盖在频谱上的播放状态图标（播放/暂停），根据当前歌曲的播放状态生成并缓存两张图，切换状态时直接加载对应的图片
+        self.music_control_img_playing = None
+        self.music_control_img_paused = None
+        threading.Thread(target=self._load_playback_status_images, daemon=True).start()
+        # 现在音乐 cover 图片主题色 ((B, G, R),(B, G, R))，作为频谱颜色的基础
+        self.cover_theme_color = (None, None)
         # 创建OpenCV窗口名字
         self.window_name = "music3d c1 image"
         self.initialize_cv_window()
@@ -83,6 +79,65 @@ class ScreenShowApp:
         self.music_monitor.stop_monitoring()
         # 在新线程中重新启动，避免阻塞托盘
         threading.Thread(target=self._restart_monitor_process, args=(platform_name,), daemon=True).start()
+
+    def _load_playback_status_images(self):
+        """加载播放状态图标，如果没有的话，生成"""
+        control_img_folder = os.path.join(my_config.app_data_dir, "control_ui")
+        os.makedirs(control_img_folder, exist_ok=True)
+        playing_path = os.path.join(control_img_folder, "1.png")
+        paused_path = os.path.join(control_img_folder, "0.png")
+        device_config_path = os.path.join(control_img_folder, "device_config.json")
+        # 如果设备配置有变化，或者图标文件不存在，则重新生成
+        need_generate = False
+        if not os.path.exists(playing_path) or not os.path.exists(paused_path):
+            print("Playback status icon images not found, need to generate")
+            need_generate = True
+        else:
+            def _check_config_same(saved_config, current_config):
+                keys_to_check = ["obliquity", "lineNumber", "deviation"]
+                for key in keys_to_check:
+                    if saved_config.get(key) != current_config.get(key):
+                        return False
+                return True
+            try:
+                with open(device_config_path, "r") as f:
+                    saved_device_config = json.load(f)
+                if not _check_config_same(saved_device_config, device_config):
+                    print("Device config changed, need to regenerate playback status icons")
+                    need_generate = True
+            except Exception as e:
+                print(f"Error checking device config for playback icons: {e}, {traceback.format_exc()}")
+                need_generate = True
+        # 根据需要生成的结果，决定是加载还是生成
+        if not need_generate:
+            # 直接加载
+            self.music_control_img_playing = np.array(load_file2RGBImage(playing_path))[:,:,::-1] # 转成BGR
+            self.music_control_img_paused = np.array(load_file2RGBImage(paused_path))[:,:,::-1] # 转成BGR
+            print("Loaded playback status icons from cache")
+        else:
+            # 生成播放状态图标
+            print("Generating playback status icons...")
+            playing_img = self.global_frame_generator.generate_music_playback_icon_images(is_playing=True)
+            paused_img = self.global_frame_generator.generate_music_playback_icon_images(is_playing=False)
+            # 转交织图 保存
+            playing_img = synthesize_fusion_frame(playing_img, device_config)
+            self.music_control_img_playing = playing_img
+            save_BGRimage2file(playing_img, playing_path)
+
+            paused_img = synthesize_fusion_frame(paused_img, device_config)
+            self.music_control_img_paused = paused_img
+            save_BGRimage2file(paused_img, paused_path)
+            try:
+                with open(device_config_path, "w") as f:
+                    json.dump({
+                        "obliquity": device_config['obliquity'],
+                        "lineNumber": device_config['lineNumber'],
+                        "deviation": device_config['deviation']
+                    }, f)
+                print("Saved current device config for playback icons")
+            except Exception as e:
+                print(f"Error saving device config for playback icons: {e}, {traceback.format_exc()}")
+
 
     def _restart_monitor_process(self, platform_name):
         time.sleep(0.5) # 等待线程清理
@@ -193,14 +248,14 @@ class ScreenShowApp:
             print("Failed to download cover image, using default cover")
         else:
             music_info["cover_path"] = cover_path
-            cover_content = cv2.imread(cover_path)
-            self.cover_theme_color = self.spectrum_analyzer.get_cover_theme_color(cover_content)
         # 生成新的tile图片，并进行fusion处理
         # print(f"Get new music cover: {music_info}")
         tile_image = self.global_frame_generator.generate_full_canvas(music_info)
         final_fusion_image = synthesize_fusion_frame(tile_image, device_config)
         # 更新fusion图片到当前显示内容
         self.img_content = final_fusion_image
+        # 同步主题色
+        self.cover_theme_color = SpectrumAnalyzer.get_cover_theme_color(self.img_content)
         # 将final_tile_image加入缓存池
         self.tile_cache_pool.add_key(generate_cache_id(music_info), final_fusion_image)
         print(f"Generated new tile image")
@@ -224,6 +279,8 @@ class ScreenShowApp:
             RGB_image = load_file2RGBImage(cache_file_path)
             # 提取Image的RGB数组转换成 BGR，更新到 self.img_content
             self.img_content = np.array(RGB_image)[:,:,::-1]
+            # 同步主题色
+            self.cover_theme_color = SpectrumAnalyzer.get_cover_theme_color(self.img_content)
         else:
             # 重新生成图片（generate_image内将新图片加入缓存池）
             # 用新的线程运行 global_frame_generator.generate_full_canvas(music_info)
@@ -237,6 +294,15 @@ class ScreenShowApp:
         self.img_content = None
         with self.spectrum_analyzer.start_listening() as recorder:
             while self.is_running:
+                # 获取当前播放歌曲(封面先不获取)
+                music_info = self.music_monitor.now_music_info.copy()
+                music_cache_id = generate_cache_id(music_info)
+                if music_cache_id != self.now_cache_id and music_info.get("title", "") != "": # 歌曲信息有变化且不为空
+                    print(f"Music changed, cache_id: {music_cache_id}")
+                    self.on_music_updated(music_cache_id)
+
+                # ==========================
+
                 # 创建黑色背景 (注意 numpy shape 是 height, width)
                 frame = np.zeros((self.monitor_true_height, self.monitor_true_width, 3), dtype=np.uint8)
                 
@@ -251,16 +317,19 @@ class ScreenShowApp:
                         frame = self.spectrum_analyzer.draw_spectrum(frame, bucket_values, self)
                     except Exception as e:
                         print(f"Draw spectrum error: {e}, {traceback.format_exc()}")
-                # ---------------------
 
-                # 获取当前播放歌曲(封面先不获取)
-                music_info = self.music_monitor.now_music_info.copy()
-                music_cache_id = generate_cache_id(music_info)
-                if music_cache_id != self.now_cache_id and music_info.get("title", "") != "": # 歌曲信息有变化且不为空
-                    print(f"Music changed, cache_id: {music_cache_id}")
-                    self.on_music_updated(music_cache_id)
-                    
+                # 绘制播放状态图标
+                if music_info.get("playback_status", 1) == 1: # 播放中
+                    control_img = self.music_control_img_playing
+                else:
+                    control_img = self.music_control_img_paused
+                if control_img is not None:
+                    # 将 control_img 叠加到 frame 上，所有黑色像素(0,0,0)视为透明
+                    mask = np.all(control_img == [0, 0, 0], axis=-1) # 黑色像素的掩码
+                    frame[~mask] = control_img[~mask] # 仅替换非黑色像素
                 
+                
+                # ---------------------
                 # 显示帧 反转显示
                 cv2.imshow(self.window_name, frame)
 

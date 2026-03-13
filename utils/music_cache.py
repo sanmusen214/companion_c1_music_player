@@ -22,7 +22,9 @@ def generate_cache_id(name_or_dict, artist=None, playback_status=None):
         playback_status = name_or_dict.get('playback_status', 1)
     else:
         name = name_or_dict
-    return f"{simple_hash(name)}{simple_hash(artist)}{playback_status}"
+    # return f"{simple_hash(name)}{simple_hash(artist)}{playback_status}"
+    return f"{simple_hash(name)}{simple_hash(artist)}"
+
     
 class MusicCachePool:
     """

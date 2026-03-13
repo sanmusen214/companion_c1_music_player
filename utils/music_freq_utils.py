@@ -186,7 +186,7 @@ class SpectrumAnalyzer:
         # 根据背景亮度，在原主题色亮度基础上进行偏移
         # 背景越亮，主题色越暗；背景越暗，主题色越亮
         # 限制在 [180, 255] 之间，确保足够亮以看清
-        final_v = np.clip(avg_v + 30, 150, 255)
+        final_v = np.clip(avg_v + 50, 150, 255)
             
         # 调整饱和度 (Saturation)
         # 如果由于封面本身就是黑白或低饱和度导致 avg_s 很低，
@@ -196,7 +196,7 @@ class SpectrumAnalyzer:
         if final_s < 20: 
             final_s = 0     # 认为是黑白/灰色系，直接使用纯白/灰
         else:
-            final_s = np.clip(final_s, 60, 200) # 保持色彩鲜艳但不过分
+            final_s = np.clip(final_s, 100, 220) # 保持色彩鲜艳但不过分
         
         # 构建 High Color (用于歌词、频谱高位)
         high_hsv = np.array([[[avg_h, final_s, final_v]]], dtype=np.uint8)
