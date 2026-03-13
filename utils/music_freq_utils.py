@@ -213,61 +213,65 @@ class SpectrumAnalyzer:
         return low_color, high_color
 
     def draw_spectrum(self, frame, bucket_values, music_screen_instance):
-        """在帧底部绘制频谱图"""
+        """在帧底部绘制频谱图 (优化版)"""
         if bucket_values is None:
             return frame
         
         # 频谱区域尺寸
         spec_h = int(music_screen_instance.monitor_true_height / 6)
         spec_w = music_screen_instance.monitor_true_width
-        start_y = music_screen_instance.monitor_true_height - spec_h
-
-        # 获取 封面低高主题色
-        color_low, color_high = music_screen_instance.cover_theme_color
-        if color_low is None or color_high is None:
-            color_low, color_high = COLOR_LOW_LEVEL, COLOR_HIGH_LEVEL
         
-        # 布局参数 (根据全屏宽度适当调整)
+        # 布局参数
         PADDING_X = 50
         PADDING_Y = 20
-        # 适当增大间距
         BUCKET_SPACING = 20
-        # NUM_BUCKETS 从 utils 导入
         LEVEL_SPACING = 4
         
         # 绘图区域尺寸
         draw_w = spec_w - 2 * PADDING_X
         draw_h = spec_h - 2 * PADDING_Y
         
+        # 计算块大小
         block_width = (draw_w - (NUM_BUCKETS - 1) * BUCKET_SPACING) / NUM_BUCKETS
         block_height = (draw_h - (NUM_LEVELS - 1) * LEVEL_SPACING) / NUM_LEVELS
         
-        # 颜色计算函数
-        def get_color(level_idx, max_levels):
-            ratio = level_idx / max((max_levels - 1), 1)
+        # 底部基准线 Y 坐标
+        base_y = music_screen_instance.monitor_true_height - PADDING_Y
+
+        # 获取颜色
+        color_low, color_high = music_screen_instance.cover_theme_color
+        if color_low is None or color_high is None:
+            color_low, color_high = COLOR_LOW_LEVEL, COLOR_HIGH_LEVEL
+            
+        # 预计算颜色表 (避免循环内重复计算)
+        colors = []
+        for j in range(NUM_LEVELS):
+            ratio = j / max((NUM_LEVELS - 1), 1)
             b = int(color_low[0] * (1 - ratio) + color_high[0] * ratio)
             g = int(color_low[1] * (1 - ratio) + color_high[1] * ratio)
             r = int(color_low[2] * (1 - ratio) + color_high[2] * ratio)
-            return (b, g, r)
+            colors.append((b, g, r))
 
         for i in range(NUM_BUCKETS):
-            amplitude = np.clip(bucket_values[i], 0.0, 1.0)
-            active_levels = int(amplitude * NUM_LEVELS)
+            val = bucket_values[i]
+            if val > 1.0: val = 1.0
+            if val < 0.0: val = 0.0
+            active_levels = int(val * NUM_LEVELS)
             
+            if active_levels == 0:
+                continue
+
             x_start = int(PADDING_X + i * (block_width + BUCKET_SPACING))
             x_end = int(x_start + block_width)
 
-            for j in range(NUM_LEVELS):
-                # j=0 是最底层，y轴向下增加
-                # 在屏幕底部区域绘制
-                y_end_local = spec_h - PADDING_Y - j * (block_height + LEVEL_SPACING)
-                y_end = int(start_y + y_end_local)
+            for j in range(active_levels):
+                # j=0 是最底层
+                y_end = int(base_y - j * (block_height + LEVEL_SPACING))
                 y_start = int(y_end - block_height)
                 
-                if j < active_levels:
-                    # 激活块，颜色根据层级渐变
-                    color = get_color(j, NUM_LEVELS)
-                    cv2.rectangle(frame, (x_start, y_start), (x_end, y_end), color, -1)
+                # 直接从表里查颜色
+                color = colors[j]
+                cv2.rectangle(frame, (x_start, y_start), (x_end, y_end), color, -1)
         return frame
 
 def main():

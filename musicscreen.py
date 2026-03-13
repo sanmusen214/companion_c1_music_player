@@ -45,6 +45,10 @@ class ScreenShowApp:
         # 现在盖在频谱上的播放状态图标（播放/暂停），根据当前歌曲的播放状态生成并缓存两张图，切换状态时直接加载对应的图片
         self.music_control_img_playing = None
         self.music_control_img_paused = None
+        self.control_indices_playing = None
+        self.control_pixels_playing = None
+        self.control_indices_paused = None
+        self.control_pixels_paused = None
         threading.Thread(target=self._load_playback_status_images, daemon=True).start()
         # 现在音乐 cover 图片主题色 ((B, G, R),(B, G, R))，作为频谱颜色的基础
         self.cover_theme_color = (None, None)
@@ -137,6 +141,17 @@ class ScreenShowApp:
                 print("Saved current device config for playback icons")
             except Exception as e:
                 print(f"Error saving device config for playback icons: {e}, {traceback.format_exc()}")
+        
+        # 预计算图标的非透明区域索引和像素值，避免每帧计算 mask
+        if self.music_control_img_playing is not None:
+            mask = np.all(self.music_control_img_playing == [0, 0, 0], axis=-1)
+            self.control_indices_playing = np.where(~mask)
+            self.control_pixels_playing = self.music_control_img_playing[self.control_indices_playing]
+            
+        if self.music_control_img_paused is not None:
+            mask = np.all(self.music_control_img_paused == [0, 0, 0], axis=-1)
+            self.control_indices_paused = np.where(~mask)
+            self.control_pixels_paused = self.music_control_img_paused[self.control_indices_paused]
 
 
     def _restart_monitor_process(self, platform_name):
@@ -292,6 +307,9 @@ class ScreenShowApp:
         """主运行循环"""
         print("Starting main loop...")
         self.img_content = None
+        # 预分配帧缓冲区 (复用内存)
+        self.frame_buffer = np.zeros((self.monitor_true_height, self.monitor_true_width, 3), dtype=np.uint8)
+
         with self.spectrum_analyzer.start_listening() as recorder:
             while self.is_running:
                 # 获取当前播放歌曲(封面先不获取)
@@ -302,39 +320,58 @@ class ScreenShowApp:
                     self.on_music_updated(music_cache_id)
 
                 # ==========================
-
-                # 创建黑色背景 (注意 numpy shape 是 height, width)
-                frame = np.zeros((self.monitor_true_height, self.monitor_true_width, 3), dtype=np.uint8)
                 
-                # 绘制图片
-                frame = self.draw_image(frame, self.img_content)
-
-                # 绘制频谱
+                # 1. 准备背景图 (直接使用缓冲区 copyto，比重新分配内存快)
+                if self.img_content is not None:
+                    try:
+                        # 确保尺寸一致
+                        if self.img_content.shape == self.frame_buffer.shape:
+                            np.copyto(self.frame_buffer, self.img_content)
+                        else:
+                            # 尺寸异常时重新创建 buffer
+                            self.frame_buffer = cv2.resize(self.img_content, (self.monitor_true_width, self.monitor_true_height))
+                    except Exception:
+                        self.frame_buffer.fill(0)
+                        
+                    frame = self.frame_buffer # 引用 buffer
+                else:
+                    self.frame_buffer.fill(0)
+                    frame = self.frame_buffer
+                
+                # 2. 绘制频谱
                 audio_data = recorder.record(numframes=self.spectrum_analyzer.fft_size)
                 bucket_values = self.spectrum_analyzer.process_frame(audio_data)
                 if bucket_values is not None:
                     try:
-                        frame = self.spectrum_analyzer.draw_spectrum(frame, bucket_values, self)
+                        # draw_spectrum 会直接修改 frame
+                        self.spectrum_analyzer.draw_spectrum(frame, bucket_values, self)
                     except Exception as e:
-                        print(f"Draw spectrum error: {e}, {traceback.format_exc()}")
+                        # print(f"Draw spectrum error: {e}") 
+                        pass # 避免刷屏
 
-                # 绘制播放状态图标
-                if music_info.get("playback_status", 1) == 1: # 播放中
-                    control_img = self.music_control_img_playing
+                # 3. 绘制播放状态图标 (使用预计算索引优化，避免全图 Mask 计算)
+                is_playing = music_info.get("playback_status", 1) == 1
+                indices = None
+                pixels = None
+                
+                if is_playing:
+                    indices = self.control_indices_playing
+                    pixels = self.control_pixels_playing
                 else:
-                    control_img = self.music_control_img_paused
-                if control_img is not None:
-                    # 将 control_img 叠加到 frame 上，所有黑色像素(0,0,0)视为透明
-                    mask = np.all(control_img == [0, 0, 0], axis=-1) # 黑色像素的掩码
-                    frame[~mask] = control_img[~mask] # 仅替换非黑色像素
+                    indices = self.control_indices_paused
+                    pixels = self.control_pixels_paused
                 
+                if indices is not None and pixels is not None:
+                    try:
+                         # 极速覆盖非透明像素
+                        frame[indices] = pixels
+                    except Exception:
+                        pass
                 
-                # ---------------------
-                # 显示帧 反转显示
+                # 4. 显示帧
                 cv2.imshow(self.window_name, frame)
 
-                # 处理键盘输入，刷新图像缓冲区
-                # 减少等待时间以提高刷新率 (10ms)
+                # 处理输入，降低等待时间
                 key = cv2.waitKey(10) & 0xFF
                 
-                time.sleep(0.001)
+                # 移除额外的 time.sleep(0.001)，因为 waitKey 已经提供了等待
