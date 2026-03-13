@@ -25,7 +25,7 @@ class MusicInfoMonitor:
         # 防止歌曲切换时播放状态来回切换，状态切换需要累计确认三次
         self.playback_confirm_count = -1
         self.playback_confirm_status = 1
-        self.playback_confirm_max = 3
+        self.playback_confirm_max = 5
         
     def start_monitoring(self):
         """启动监控线程"""

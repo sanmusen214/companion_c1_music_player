@@ -124,16 +124,108 @@ class SpectrumAnalyzer:
         self.prev_bucket_values = current_bucket_values
         
         return current_bucket_values
+    
+    @staticmethod
+    def get_cover_theme_color(cover_img):
+        """
+        从封面图片中提取主色调，作为频谱颜色的基础。
+        优化逻辑：优先提取高饱和度、高亮度的颜色，并强制提升亮度，
+        确保在变暗的封面背景（尤其下三分之一区域）上能清晰显示歌词和UI。
+        """
+        if cover_img is None:
+            return COLOR_LOW_LEVEL, COLOR_HIGH_LEVEL
+        
+        # 1. 缩小图片以加快处理 (使用 64x64 足够提取颜色特征)
+        h, w = cover_img.shape[:2]
+        scale = 64.0 / max(h, w)
+        new_w, new_h = int(w * scale), int(h * scale)
+        if new_w <= 0 or new_h <= 0:
+             return COLOR_LOW_LEVEL, COLOR_HIGH_LEVEL
+        
+        small_img = cv2.resize(cover_img, (new_w, new_h), interpolation=cv2.INTER_AREA)
+        
+        # 2. 转换为 HSV 空间处理 (Hue, Saturation, Value)
+        hsv_img = cv2.cvtColor(small_img, cv2.COLOR_BGR2HSV)
+        pixels = hsv_img.reshape(-1, 3)
+        
+        # 3. 筛选有效像素
+        # 剔除过暗的像素 (V < 40)，这些在暗背景下无法提供对比度
+        valid_mask = pixels[:, 2] > 40
+        valid_pixels = pixels[valid_mask]
+        
+        if len(valid_pixels) == 0:
+            # 如果全是黑的，返回高亮白色
+            return (180, 180, 180), (255, 255, 255)
 
-    def draw_spectrum(self, frame, bucket_values, monitor_width, monitor_height):
+        # 4. 颜色评分机制 (Vibrancy Score)
+        # 我们希望找到既有色彩(Saturation高)又比较亮(Value高)的颜色
+        # Score = S * 1.5 + V * 1.0 (权重可调，偏重色彩)
+        s_vals = valid_pixels[:, 1].astype(float)
+        v_vals = valid_pixels[:, 2].astype(float)
+        scores = s_vals * 1.5 + v_vals
+        
+        # 5. 取分数最高的前 10% 像素的平均值作为基准色
+        top_k = max(1, int(len(valid_pixels) * 0.1))
+        # 获取分数最高的索引
+        top_indices = np.argsort(scores)[-top_k:]
+        top_pixels = valid_pixels[top_indices]
+        
+        avg_h = np.mean(top_pixels[:, 0])
+        avg_s = np.mean(top_pixels[:, 1])
+        avg_v = np.mean(top_pixels[:, 2])
+        
+        # 6. 生成最终颜色
+        # 判断封面下1/3区域的亮度，决定文字/UI是深色还是浅色
+        start_y = int(new_h * 2 / 3)
+        bottom_area = hsv_img[start_y:, :, 2]
+        if bottom_area.size > 0:
+            avg_bottom_v = np.mean(bottom_area)
+        else:
+            avg_bottom_v = 0
+            
+        # 根据背景亮度，在原主题色亮度基础上进行偏移
+        # 背景越亮，主题色越暗；背景越暗，主题色越亮
+        # 限制在 [180, 255] 之间，确保足够亮以看清
+        final_v = np.clip(avg_v + 30, 150, 255)
+            
+        # 调整饱和度 (Saturation)
+        # 如果由于封面本身就是黑白或低饱和度导致 avg_s 很低，
+        # 则保持低饱和度(白色/灰色)，否则强行增加饱和度会产生杂色。
+        # 如果有一定色彩(>20)，则限制在一个舒适的区间(60-200)，避免过于刺眼或太淡。
+        final_s = avg_s
+        if final_s < 20: 
+            final_s = 0     # 认为是黑白/灰色系，直接使用纯白/灰
+        else:
+            final_s = np.clip(final_s, 60, 200) # 保持色彩鲜艳但不过分
+        
+        # 构建 High Color (用于歌词、频谱高位)
+        high_hsv = np.array([[[avg_h, final_s, final_v]]], dtype=np.uint8)
+        high_bgr = cv2.cvtColor(high_hsv, cv2.COLOR_HSV2BGR)[0][0]
+        high_color = tuple(map(int, high_bgr))
+        
+        # 构建 Low Color (用于频谱低位，稍微暗一点或淡一点)
+        # 这里的 Low Color 也可以通过降低亮度来实现
+        low_v = final_v * 0.75
+        low_hsv = np.array([[[avg_h, final_s, low_v]]], dtype=np.uint8)
+        low_bgr = cv2.cvtColor(low_hsv, cv2.COLOR_HSV2BGR)[0][0]
+        low_color = tuple(map(int, low_bgr))
+        
+        return low_color, high_color
+
+    def draw_spectrum(self, frame, bucket_values, music_screen_instance):
         """在帧底部绘制频谱图"""
         if bucket_values is None:
             return frame
         
         # 频谱区域尺寸
-        spec_h = int(monitor_height / 6)
-        spec_w = monitor_width
-        start_y = monitor_height - spec_h
+        spec_h = int(music_screen_instance.monitor_true_height / 6)
+        spec_w = music_screen_instance.monitor_true_width
+        start_y = music_screen_instance.monitor_true_height - spec_h
+
+        # 获取 封面低高主题色
+        color_low, color_high = music_screen_instance.cover_theme_color
+        if color_low is None or color_high is None:
+            color_low, color_high = COLOR_LOW_LEVEL, COLOR_HIGH_LEVEL
         
         # 布局参数 (根据全屏宽度适当调整)
         PADDING_X = 50
@@ -153,9 +245,9 @@ class SpectrumAnalyzer:
         # 颜色计算函数
         def get_color(level_idx, max_levels):
             ratio = level_idx / max((max_levels - 1), 1)
-            b = int(COLOR_LOW_LEVEL[0] * (1 - ratio) + COLOR_HIGH_LEVEL[0] * ratio)
-            g = int(COLOR_LOW_LEVEL[1] * (1 - ratio) + COLOR_HIGH_LEVEL[1] * ratio)
-            r = int(COLOR_LOW_LEVEL[2] * (1 - ratio) + COLOR_HIGH_LEVEL[2] * ratio)
+            b = int(color_low[0] * (1 - ratio) + color_high[0] * ratio)
+            g = int(color_low[1] * (1 - ratio) + color_high[1] * ratio)
+            r = int(color_low[2] * (1 - ratio) + color_high[2] * ratio)
             return (b, g, r)
 
         for i in range(NUM_BUCKETS):
@@ -173,10 +265,8 @@ class SpectrumAnalyzer:
                 y_start = int(y_end - block_height)
                 
                 if j < active_levels:
+                    # 激活块，颜色根据层级渐变
                     color = get_color(j, NUM_LEVELS)
-                    cv2.rectangle(frame, (x_start, y_start), (x_end, y_end), color, -1)
-                else:
-                    color = COLOR_INACTIVE_BLOCK
                     cv2.rectangle(frame, (x_start, y_start), (x_end, y_end), color, -1)
         return frame
 

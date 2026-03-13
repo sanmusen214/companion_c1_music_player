@@ -1,3 +1,5 @@
+import os
+
 import cv2
 import numpy as np
 import threading
@@ -33,6 +35,17 @@ class ScreenShowApp:
         self.tile_cache_pool = MusicCachePool(max_size=my_config.get("Cache_len", 10))
         # 现在合成tile图片内容（BGR 数组）
         self.img_content = None
+        # 现在音乐 cover 图片主题色 ((B, G, R),(B, G, R))，作为频谱颜色的基础
+        self.cover_theme_color = (None, None)
+        # 如果本地有封面图片，则读取并解析主题色
+        cover_path = os.path.join(my_config.app_data_dir, "cover.jpg")
+        try:
+            if os.path.exists(cover_path):
+                cover_content = cv2.imread(cover_path)
+                self.cover_theme_color = SpectrumAnalyzer.get_cover_theme_color(cover_content)
+                print("Loaded last music cover as theme color")
+        except Exception as e:
+            print(f"Error loading cover image for theme color: {e}, {traceback.format_exc()}")
         # tile图片生成器
         self.global_frame_generator = MusicPlayerGenerator(
             my_config.get("Cover_intensity"),
@@ -180,6 +193,8 @@ class ScreenShowApp:
             print("Failed to download cover image, using default cover")
         else:
             music_info["cover_path"] = cover_path
+            cover_content = cv2.imread(cover_path)
+            self.cover_theme_color = self.spectrum_analyzer.get_cover_theme_color(cover_content)
         # 生成新的tile图片，并进行fusion处理
         # print(f"Get new music cover: {music_info}")
         tile_image = self.global_frame_generator.generate_full_canvas(music_info)
@@ -233,7 +248,7 @@ class ScreenShowApp:
                 bucket_values = self.spectrum_analyzer.process_frame(audio_data)
                 if bucket_values is not None:
                     try:
-                        frame = self.spectrum_analyzer.draw_spectrum(frame, bucket_values, self.monitor_true_width, self.monitor_true_height)
+                        frame = self.spectrum_analyzer.draw_spectrum(frame, bucket_values, self)
                     except Exception as e:
                         print(f"Draw spectrum error: {e}, {traceback.format_exc()}")
                 # ---------------------
