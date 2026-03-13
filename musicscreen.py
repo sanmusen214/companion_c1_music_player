@@ -7,8 +7,10 @@ import pystray
 import sys
 import webbrowser
 from screeninfo import get_monitors
+import traceback
 
 from utils import MusicPlayerGenerator, device_config, synthesize_fusion_frame, hide_window_from_taskbar, MusicCachePool, generate_cache_id, load_file2RGBImage, download_cover_image_from_keyword, MusicInfoMonitor, my_i18n, my_config
+from utils.music_freq_utils import SpectrumAnalyzer
 
 class ScreenShowApp:
     """系统托盘和播放器窗口的主应用程序"""
@@ -42,6 +44,13 @@ class ScreenShowApp:
         self.initialize_cv_window()
         # 启动系统托盘图标
         self.setup_tray_icon()
+        
+        # 初始化频谱分析器
+        try:
+            self.spectrum_analyzer = SpectrumAnalyzer()
+        except Exception as e:
+            print(f"Warning: Spectrum Analyzer init failed: {e}, {traceback.format_exc()}")
+            self.spectrum_analyzer = None
         
     def update_music_platform(self, icon, item):
         """更新音乐平台的回调函数"""
@@ -211,34 +220,37 @@ class ScreenShowApp:
         """主运行循环"""
         print("Starting main loop...")
         self.img_content = None
-        
-        while self.is_running:
-            # 创建黑色背景
-            frame = np.zeros((self.monitor_true_width, self.monitor_true_height, 3), dtype=np.uint8)
-            
-            # # 更新进度（如果正在播放）
-            # if self.music_is_playing:
-            #     self.progress += self.speed
-            #     if self.progress >= 100:
-            #         self.progress = 0  # 循环回到0
-            # 绘制进度条
-            # frame = self.draw_progress_bar(frame, self.progress)
-
-            # 绘制图片
-            frame = self.draw_image(frame, self.img_content)
-
-            # 获取当前播放歌曲(封面先不获取)
-            music_info = self.music_monitor.now_music_info.copy()
-            music_cache_id = generate_cache_id(music_info)
-            if music_cache_id != self.now_cache_id and music_info.get("title", "") != "": # 歌曲信息有变化且不为空
-                print(f"Music changed, cache_id: {music_cache_id}")
-                self.on_music_updated(music_cache_id)
+        with self.spectrum_analyzer.start_listening() as recorder:
+            while self.is_running:
+                # 创建黑色背景 (注意 numpy shape 是 height, width)
+                frame = np.zeros((self.monitor_true_height, self.monitor_true_width, 3), dtype=np.uint8)
                 
-            
-            # 显示帧 反转显示
-            cv2.imshow(self.window_name, frame)
+                # 绘制图片
+                frame = self.draw_image(frame, self.img_content)
 
-            # 处理键盘输入，刷新图像缓冲区
-            key = cv2.waitKey(100) & 0xFF
-            
-            time.sleep(0.05)  # 控制更新频率
+                # 绘制频谱
+                audio_data = recorder.record(numframes=self.spectrum_analyzer.fft_size)
+                bucket_values = self.spectrum_analyzer.process_frame(audio_data)
+                if bucket_values is not None:
+                    try:
+                        frame = self.spectrum_analyzer.draw_spectrum(frame, bucket_values, self.monitor_true_width, self.monitor_true_height)
+                    except Exception as e:
+                        print(f"Draw spectrum error: {e}, {traceback.format_exc()}")
+                # ---------------------
+
+                # 获取当前播放歌曲(封面先不获取)
+                music_info = self.music_monitor.now_music_info.copy()
+                music_cache_id = generate_cache_id(music_info)
+                if music_cache_id != self.now_cache_id and music_info.get("title", "") != "": # 歌曲信息有变化且不为空
+                    print(f"Music changed, cache_id: {music_cache_id}")
+                    self.on_music_updated(music_cache_id)
+                    
+                
+                # 显示帧 反转显示
+                cv2.imshow(self.window_name, frame)
+
+                # 处理键盘输入，刷新图像缓冲区
+                # 减少等待时间以提高刷新率 (10ms)
+                key = cv2.waitKey(10) & 0xFF
+                
+                time.sleep(0.001)
