@@ -70,7 +70,7 @@ class SpectrumAnalyzer:
         # 频率补偿曲线：削弱低频，大幅增强高频
         # 音乐频谱能量通常随频率增加而下降(粉红噪声特性)，因此需要对高频进行显著补偿
         # 这里使用对数增长曲线，范围从 0.5 (低频削弱一半) 到 10.0 (高频放大10倍)
-        self.freq_compensation = np.logspace(np.log10(0.25), np.log10(20.0), self.num_buckets)
+        self.freq_compensation = np.logspace(np.log10(0.33), np.log10(30.0), self.num_buckets)
 
     def _get_loopback_mic(self):
         try:
@@ -177,38 +177,33 @@ class SpectrumAnalyzer:
         # 6. 生成最终颜色
         # 判断封面下1/3区域的亮度，决定文字/UI是深色还是浅色
         start_y = int(new_h * 2 / 3)
-        bottom_area = hsv_img[start_y:, :, 2]
-        if bottom_area.size > 0:
-            avg_bottom_v = np.mean(bottom_area)
-        else:
-            avg_bottom_v = 0
+        avg_bottom_h = np.mean(hsv_img[start_y:, :, 0])
+        avg_bottom_s = np.mean(hsv_img[start_y:, :, 1])
+        avg_bottom_v = np.mean(hsv_img[start_y:, :, 2])
             
-        # 根据背景亮度，在原主题色亮度基础上进行偏移
-        # 背景越亮，主题色越暗；背景越暗，主题色越亮
-        # 限制在 [180, 255] 之间，确保足够亮以看清
-        final_v = np.clip(avg_v + 50, 150, 255)
-            
-        # 调整饱和度 (Saturation)
-        # 如果由于封面本身就是黑白或低饱和度导致 avg_s 很低，
-        # 则保持低饱和度(白色/灰色)，否则强行增加饱和度会产生杂色。
-        # 如果有一定色彩(>20)，则限制在一个舒适的区间(60-200)，避免过于刺眼或太淡。
-        final_s = avg_s
-        if final_s < 20: 
-            final_s = 0     # 认为是黑白/灰色系，直接使用纯白/灰
-        else:
-            final_s = np.clip(final_s, 100, 220) # 保持色彩鲜艳但不过分
+        # 处理 h, 定义final_h
+        # h代表色相，范围是0-179
+        # 我们希望在色相上有一定的对比度，避免过于接近背景色
+        # 如果 avg_bottom_h 很低，说明封面整体较暗，我们可以适当调整
+        final_h = avg_h
         
-        # 构建 High Color (用于歌词、频谱高位)
-        high_hsv = np.array([[[avg_h, final_s, final_v]]], dtype=np.uint8)
-        high_bgr = cv2.cvtColor(high_hsv, cv2.COLOR_HSV2BGR)[0][0]
-        high_color = tuple(map(int, high_bgr))
+        # 处理 s，定义final_s
+        # 饱和度过低会导致颜色过于灰暗，我们可以设置一个最小饱和度
+        final_s = np.clip(avg_s + 60, 50, 255)  # 最小饱和度为50，确保颜色不至于过于灰暗
+
+        # 处理 v，定义final_v
+        # 亮度过低会导致颜色在暗背景上难以辨识，我们可以根据背景的亮暗调整亮度
+        # 如果封面下部很暗，提升亮度以确保对比度
+        final_v = np.clip(avg_v + 60, 50, 255)  # 最小亮度为50，确保颜色不至于过于暗淡
+
+        # 生成的final hsv映射到high_color RGB
+        # low_color 是 high_color RGB 降低亮度和饱和度的版本
+        high_color_hsv = np.array([[[final_h, final_s, final_v]]], dtype=np.uint8)
+        low_color_hsv = np.array([[[final_h, final_s * 0.8, final_v * 0.8]]], dtype=np.uint8)  # 低层颜色更暗更灰
+
+        high_color = cv2.cvtColor(high_color_hsv, cv2.COLOR_HSV2BGR)[0][0]
+        low_color = cv2.cvtColor(low_color_hsv, cv2.COLOR_HSV2BGR)[0][0]
         
-        # 构建 Low Color (用于频谱低位，稍微暗一点或淡一点)
-        # 这里的 Low Color 也可以通过降低亮度来实现
-        low_v = final_v * 0.75
-        low_hsv = np.array([[[avg_h, final_s, low_v]]], dtype=np.uint8)
-        low_bgr = cv2.cvtColor(low_hsv, cv2.COLOR_HSV2BGR)[0][0]
-        low_color = tuple(map(int, low_bgr))
         
         return low_color, high_color
 
