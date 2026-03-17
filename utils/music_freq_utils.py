@@ -34,6 +34,30 @@ MAX_FREQ = 14000           # 大部分音乐能量集中在16k以下
 
 # ==============================================================================
 
+class FakeListener:
+    """假的防止报错的监听器, with 语句兼容"""
+    def __enter__(self):
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
+
+class FakeSpectrumAnalyzer:
+    """用于适配部分电脑无法获取 loopback 设备的情况，提供一个假类，避免程序崩溃"""
+    def __init__(self):
+        print("Warning: No loopback microphone found. Using FakeSpectrumAnalyzer with silent output.")
+    
+    def start_listening(self):
+        return FakeListener()
+    
+    def record(self, numframes):
+        # 返回一个全零的假音频数据
+        return np.zeros((numframes, 2), dtype=np.float32)
+    
+    def process_frame(self, audio_data):
+        # 返回全零的假频谱数据
+        return np.zeros(NUM_BUCKETS)
+
 class SpectrumAnalyzer:
     def __init__(self, sample_rate=SAMPLE_RATE, fft_size=FFT_SIZE, 
                  num_buckets=NUM_BUCKETS, min_freq=MIN_FREQ, max_freq=MAX_FREQ,
