@@ -13,7 +13,7 @@ import traceback
 import json
 
 from utils import MusicPlayerGenerator, device_config, synthesize_fusion_frame, hide_window_from_taskbar, MusicCachePool, generate_cache_id, load_file2RGBImage, save_BGRimage2file,  download_cover_image_from_keyword, MusicInfoMonitor, my_i18n, my_config
-from utils.music_freq_utils import SpectrumAnalyzer
+from utils.music_freq_utils import SpectrumAnalyzer, FakeSpectrumAnalyzer
 
 class ScreenShowApp:
     """系统托盘和播放器窗口的主应用程序"""
@@ -21,6 +21,7 @@ class ScreenShowApp:
         # 显示器基本参数
         self.monitor_true_width = 1440
         self.monitor_true_height = 2560
+        self.target_frame_duration = 33
         # 应用状态控制
         self.is_running = True # 应用主循环运行状态
         
@@ -63,7 +64,7 @@ class ScreenShowApp:
             self.spectrum_analyzer = SpectrumAnalyzer()
         except Exception as e:
             print(f"Warning: Spectrum Analyzer init failed: {e}, {traceback.format_exc()}")
-            self.spectrum_analyzer = None
+            self.spectrum_analyzer = FakeSpectrumAnalyzer()
         
     def update_music_platform(self, icon, item):
         """更新音乐平台的回调函数"""
@@ -312,6 +313,7 @@ class ScreenShowApp:
 
         with self.spectrum_analyzer.start_listening() as recorder:
             while self.is_running:
+                start_time = time.perf_counter()
                 # 获取当前播放歌曲(封面先不获取)
                 music_info = self.music_monitor.now_music_info.copy()
                 music_cache_id = generate_cache_id(music_info)
@@ -339,15 +341,20 @@ class ScreenShowApp:
                     frame = self.frame_buffer
                 
                 # 2. 绘制频谱
-                audio_data = recorder.record(numframes=self.spectrum_analyzer.fft_size)
-                bucket_values = self.spectrum_analyzer.process_frame(audio_data)
-                if bucket_values is not None:
-                    try:
-                        # draw_spectrum 会直接修改 frame
-                        self.spectrum_analyzer.draw_spectrum(frame, bucket_values, self)
-                    except Exception as e:
-                        # print(f"Draw spectrum error: {e}") 
-                        pass # 避免刷屏
+                # 如果是 FakeSpectrumAnalyzer，则跳过频谱绘制
+                if isinstance(self.spectrum_analyzer, FakeSpectrumAnalyzer):
+                    # print("Using FakeSpectrumAnalyzer, skipping spectrum drawing")
+                    pass
+                else:
+                    audio_data = recorder.record(numframes=self.spectrum_analyzer.fft_size)
+                    bucket_values = self.spectrum_analyzer.process_frame(audio_data)
+                    if bucket_values is not None:
+                        try:
+                            # draw_spectrum 会直接修改 frame
+                            self.spectrum_analyzer.draw_spectrum(frame, bucket_values, self)
+                        except Exception as e:
+                            # print(f"Draw spectrum error: {e}") 
+                            pass # 避免刷屏
 
                 # 3. 绘制播放状态图标 (使用预计算索引优化，避免全图 Mask 计算)
                 is_playing = music_info.get("playback_status", 1) == 1
@@ -371,7 +378,11 @@ class ScreenShowApp:
                 # 4. 显示帧
                 cv2.imshow(self.window_name, frame)
 
+                end_time = time.perf_counter()
+                process_time = int((end_time - start_time)*1000)
+                needwait_time = max(self.target_frame_duration - process_time, 1) # 确保至少等待1ms
+
                 # 处理输入，降低等待时间
-                key = cv2.waitKey(10) & 0xFF
+                key = cv2.waitKey(needwait_time) & 0xFF
                 
                 # 移除额外的 time.sleep(0.001)，因为 waitKey 已经提供了等待
