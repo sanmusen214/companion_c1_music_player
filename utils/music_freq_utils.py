@@ -12,7 +12,7 @@ warnings.filterwarnings("ignore", category=RuntimeWarning, module="soundcard.med
 # ==============================================================================
 
 # 频谱参数
-NUM_BUCKETS = 10           # 频谱桶数量 (左右分为10个)
+NUM_BUCKETS = 20           # 频谱桶数量 (左右分为10个)
 NUM_LEVELS = 10            # 每个桶的高低层次数量 (高度分为10层)
 
 # 颜色设置 (OpenCV 使用 BGR 格式)
@@ -157,22 +157,30 @@ class SpectrumAnalyzer:
             # 如果全是黑的，返回高亮白色
             return (180, 180, 180), (255, 255, 255)
 
-        # 4. 颜色评分机制 (Vibrancy Score)
-        # 我们希望找到既有色彩(Saturation高)又比较亮(Value高)的颜色
-        # Score = S * 1.5 + V * 1.0 (权重可调，偏重色彩)
-        s_vals = valid_pixels[:, 1].astype(float)
-        v_vals = valid_pixels[:, 2].astype(float)
-        scores = s_vals * 1.5 + v_vals
+        # 4. 改为选择出现次数最多的颜色 (Dominant Color)
+        # 使用 K-Means 聚类，K=5，取最大的簇的中心作为主色
+        data = np.float32(valid_pixels)
         
-        # 5. 取分数最高的前 10% 像素的平均值作为基准色
-        top_k = max(1, int(len(valid_pixels) * 0.1))
-        # 获取分数最高的索引
-        top_indices = np.argsort(scores)[-top_k:]
-        top_pixels = valid_pixels[top_indices]
+        # 聚类数量
+        n_clusters = 5
+        if len(data) < n_clusters:
+             n_clusters = len(data)
+             
+        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+        flags = cv2.KMEANS_RANDOM_CENTERS
         
-        avg_h = np.mean(top_pixels[:, 0])
-        avg_s = np.mean(top_pixels[:, 1])
-        avg_v = np.mean(top_pixels[:, 2])
+        # 聚类
+        compactness, labels, centers = cv2.kmeans(data, n_clusters, None, criteria, 10, flags)
+        
+        # 5. 找到包含像素最多的簇
+        unique_labels, counts = np.unique(labels, return_counts=True)
+        dominant_label = unique_labels[np.argmax(counts)]
+        
+        dominant_color = centers[dominant_label]
+        
+        avg_h = dominant_color[0]
+        avg_s = dominant_color[1]
+        avg_v = dominant_color[2]
         
         # 6. 生成最终颜色
         # 判断封面下1/3区域的亮度，决定文字/UI是深色还是浅色
@@ -189,7 +197,7 @@ class SpectrumAnalyzer:
         
         # 处理 s，定义final_s
         # 饱和度过低会导致颜色过于灰暗，我们可以设置一个最小饱和度
-        final_s = np.clip(avg_s + 60, 50, 255)  # 最小饱和度为50，确保颜色不至于过于灰暗
+        final_s = np.clip(avg_s + 100, 50, 255)  # 最小饱和度为50，确保颜色不至于过于灰暗
 
         # 处理 v，定义final_v
         # 亮度过低会导致颜色在暗背景上难以辨识，我们可以根据背景的亮暗调整亮度
@@ -199,7 +207,7 @@ class SpectrumAnalyzer:
         # 生成的final hsv映射到high_color RGB
         # low_color 是 high_color RGB 降低亮度和饱和度的版本
         high_color_hsv = np.array([[[final_h, final_s, final_v]]], dtype=np.uint8)
-        low_color_hsv = np.array([[[final_h, final_s * 0.8, final_v * 0.8]]], dtype=np.uint8)  # 低层颜色更暗更灰
+        low_color_hsv = np.array([[[final_h, final_s * 0.9, final_v * 0.9]]], dtype=np.uint8)  # 低层颜色更暗更灰
 
         high_color = cv2.cvtColor(high_color_hsv, cv2.COLOR_HSV2BGR)[0][0]
         low_color = cv2.cvtColor(low_color_hsv, cv2.COLOR_HSV2BGR)[0][0]
@@ -213,7 +221,7 @@ class SpectrumAnalyzer:
             return frame
         
         # 频谱区域尺寸
-        spec_h = int(music_screen_instance.monitor_true_height / 6)
+        spec_h = int(music_screen_instance.monitor_true_height / 7)
         spec_w = music_screen_instance.monitor_true_width
         
         # 布局参数
