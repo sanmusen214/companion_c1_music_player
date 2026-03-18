@@ -5,6 +5,7 @@ import queue
 import time
 import traceback
 from utils.config import my_config
+from .api_get_music_cover_url import get_music_cover_url
 
 class MusicInfoMonitor:
     """音乐信息监控器，负责运行外部程序并解析输出"""
@@ -154,17 +155,9 @@ def get_netease_id(music_info):
     return best_result["id"]
 
 def download_cover_image(song_id):
-    url = f"https://api.injahow.cn/meting/?type=song&id={song_id}"
-    res = requests.get(url)
-    if res.status_code != 200:
+    if song_id is None:
         return None
-    # 得到封面图接口链接
-    picurl = res.json()[0]['pic']
-    res = requests.get(picurl)
-    if res.status_code != 200:
-        return None
-    # 得到最终封面图图片链接
-    final_pic_url = res.url.split("?param")[0] + "?param=300y300"
+    final_pic_url = get_music_cover_url(song_id, size=300)
     # 下载封面图
     res = requests.get(final_pic_url)
     if res.status_code != 200:
