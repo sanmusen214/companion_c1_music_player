@@ -312,6 +312,7 @@ class ScreenShowApp:
         self.frame_buffer = np.zeros((self.monitor_true_height, self.monitor_true_width, 3), dtype=np.uint8)
 
         with self.spectrum_analyzer.start_listening() as recorder:
+            self.last_audio_read_time = time.perf_counter()
             while self.is_running:
                 start_time = time.perf_counter()
                 # 获取当前播放歌曲(封面先不获取)
@@ -346,8 +347,23 @@ class ScreenShowApp:
                     # print("Using FakeSpectrumAnalyzer, skipping spectrum drawing")
                     pass
                 else:
-                    audio_data = recorder.record(numframes=self.spectrum_analyzer.fft_size)
-                    bucket_values = self.spectrum_analyzer.process_frame(audio_data)
+                    # 计算需要读取的帧数，确保读取速度跟上实际流逝的时间，防止音频缓冲区积压导致延迟
+                    current_time = time.perf_counter()
+                    # 距离上次读取的实际时间
+                    elapsed = current_time - self.last_audio_read_time
+                    # 转换为样本数
+                    frames_to_read = int(elapsed * self.spectrum_analyzer.sample_rate)
+                    # 至少读取FFT窗口大小的数据
+                    frames_to_read = max(frames_to_read, self.spectrum_analyzer.fft_size)
+                    
+                    audio_data = recorder.record(numframes=frames_to_read)
+                    # 更新最后读取时间
+                    self.last_audio_read_time = time.perf_counter()
+                    
+                    # 只取最后一段最新的音频用于分析，丢弃之前的积压数据
+                    playback_data = audio_data[-self.spectrum_analyzer.fft_size:]
+                    
+                    bucket_values = self.spectrum_analyzer.process_frame(playback_data)
                     if bucket_values is not None:
                         try:
                             # draw_spectrum 会直接修改 frame
