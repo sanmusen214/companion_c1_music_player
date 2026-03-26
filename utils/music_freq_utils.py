@@ -66,11 +66,7 @@ class SpectrumAnalyzer:
             self.bucket_indices.append((idx_start, idx_end))
             
         self.prev_bucket_values = np.zeros(self.num_buckets)
-        
-        # 频率补偿曲线：削弱低频，大幅增强高频
-        # 音乐频谱能量通常随频率增加而下降(粉红噪声特性)，因此需要对高频进行显著补偿
-        # 这里使用对数增长曲线，范围从 0.5 (低频削弱一半) 到 10.0 (高频放大10倍)
-        self.freq_compensation = np.logspace(np.log10(0.33), np.log10(30.0), self.num_buckets)
+
 
     def _get_loopback_mic(self):
         try:
@@ -115,8 +111,11 @@ class SpectrumAnalyzer:
                 current_bucket_values[i] = val
         
         # 应用频率补偿曲线
-        if hasattr(self, 'freq_compensation'):
-            current_bucket_values *= self.freq_compensation
+        # 频率补偿曲线：削弱低频，大幅增强高频
+        # 音乐频谱能量通常随频率增加而下降(粉红噪声特性)，因此需要对高频进行显著补偿
+        # 这里使用对数增长曲线，范围从 0.5 (低频削弱一半) 到 10.0 (高频放大10倍)
+        freq_compensation = np.logspace(np.log10(0.25), np.log10(27.0), self.num_buckets)
+        current_bucket_values *= freq_compensation
 
         # 增益和平滑
         current_bucket_values *= self.gain
@@ -197,17 +196,17 @@ class SpectrumAnalyzer:
         
         # 处理 s，定义final_s
         # 饱和度过低会导致颜色过于灰暗，我们可以设置一个最小饱和度
-        final_s = np.clip(avg_s + 100, 50, 255)  # 最小饱和度为50，确保颜色不至于过于灰暗
+        final_s = np.clip(avg_s + 110, 50, 255)  # 最小饱和度为50，确保颜色不至于过于灰暗
 
         # 处理 v，定义final_v
         # 亮度过低会导致颜色在暗背景上难以辨识，我们可以根据背景的亮暗调整亮度
         # 如果封面下部很暗，提升亮度以确保对比度
-        final_v = np.clip(avg_v + 60, 50, 255)  # 最小亮度为50，确保颜色不至于过于暗淡
+        final_v = np.clip(avg_v + 70, 50, 255)  # 最小亮度为50，确保颜色不至于过于暗淡
 
         # 生成的final hsv映射到high_color RGB
         # low_color 是 high_color RGB 降低亮度和饱和度的版本
-        high_color_hsv = np.array([[[final_h, final_s, final_v]]], dtype=np.uint8)
-        low_color_hsv = np.array([[[final_h, final_s * 0.9, final_v * 0.9]]], dtype=np.uint8)  # 低层颜色更暗更灰
+        high_color_hsv = np.array([[[final_h, final_s * 0.5, final_v]]], dtype=np.uint8)
+        low_color_hsv = np.array([[[final_h, final_s, final_v]]], dtype=np.uint8)  # 低层颜色更暗更灰
 
         high_color = cv2.cvtColor(high_color_hsv, cv2.COLOR_HSV2BGR)[0][0]
         low_color = cv2.cvtColor(low_color_hsv, cv2.COLOR_HSV2BGR)[0][0]
