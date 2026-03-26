@@ -229,21 +229,9 @@ class ScreenShowApp:
     
     def quit_action(self):
         """退出菜单项回调，应用生命周期结束必须调用"""
-        # 退出while循环后，确保正确关闭音频流和窗口
-        if self.recorder_ins is not None:
-            print("Closing audio stream...")
-            self.recorder_ins.__exit__(None, None, None)
+        print("Quit requested, stopping main loop...")
         self.is_running = False
-        print("Stopping music monitor...")
-        self.music_monitor.stop_monitoring()
-        print("Stop icon...")
-        self.icon.stop()
-        time.sleep(1)  # 等待图标线程结束
-        print("Destroying windows and exiting...")
-        cv2.destroyWindow(self.window_name)
-        cv2.waitKey(1)  # 确保窗口被销毁
-        print("Application quit")
-        sys.exit(0)
+
 
     def draw_image(self, frame, pic_content):
         """在帧上绘制图片"""
@@ -322,99 +310,147 @@ class ScreenShowApp:
             self.recorder_ins = self.spectrum_analyzer.start_listening()
             recorder = self.recorder_ins.__enter__()
         self.last_audio_read_time = time.perf_counter()
-        while self.is_running:
-            start_time = time.perf_counter()
-            # 获取当前播放歌曲(封面先不获取)
-            music_info = self.music_monitor.now_music_info.copy()
-            music_cache_id = generate_cache_id(music_info)
-            if music_cache_id != self.now_cache_id and music_info.get("title", "") != "": # 歌曲信息有变化且不为空
-                print(f"Music changed, cache_id: {music_cache_id}")
-                self.on_music_updated(music_cache_id)
+        
+        try:
+            while self.is_running:
+                start_time = time.perf_counter()
+                # 获取当前播放歌曲(封面先不获取)
 
-            # ==========================
-            
-            # 1. 准备背景图 (直接使用缓冲区 copyto，比重新分配内存快)
-            if self.img_content is not None:
-                try:
-                    # 确保尺寸一致
-                    if self.img_content.shape == self.frame_buffer.shape:
-                        np.copyto(self.frame_buffer, self.img_content)
-                    else:
-                        # 尺寸异常时重新创建 buffer
-                        self.frame_buffer = cv2.resize(self.img_content, (self.monitor_true_width, self.monitor_true_height))
-                except Exception:
-                    self.frame_buffer.fill(0)
-                    
-                frame = self.frame_buffer # 引用 buffer
-            else:
-                self.frame_buffer.fill(0)
-                frame = self.frame_buffer
-            
-            # 2. 绘制频谱
-            # 如果是 FakeSpectrumAnalyzer，则跳过频谱绘制
-            if self.spectrum_analyzer is None:
-                # print("Using FakeSpectrumAnalyzer, skipping spectrum drawing")
-                pass
-            else:
-                # 计算需要读取的帧数，确保读取速度跟上实际流逝的时间，防止音频缓冲区积压导致延迟
-                current_time = time.perf_counter()
-                # 距离上次读取的实际时间
-                elapsed = current_time - self.last_audio_read_time
-                # 如果 elapsed 大于1秒，说明可能出现了积压，重新初始化 recorder_ins
-                if elapsed > 1.0:
-                    self.recorder_ins.__exit__(None, None, None)
-                    self.recorder_ins = self.spectrum_analyzer.start_listening()
-                    recorder = self.recorder_ins.__enter__()
-                    elapsed = 0.033
-                    print("Checkpoint: Audio read lag detected, reinitializing audio stream to clear buffer")
-                # 转换为样本数
-                frames_to_read = int(elapsed * self.spectrum_analyzer.sample_rate)
-                # 至少读取FFT窗口大小的数据
-                frames_to_read = max(frames_to_read, self.spectrum_analyzer.fft_size)
+                music_info = self.music_monitor.now_music_info.copy()
+                music_cache_id = generate_cache_id(music_info)
+                if music_cache_id != self.now_cache_id and music_info.get("title", "") != "": # 歌曲信息有变化且不为空
+                    print(f"Music changed, cache_id: {music_cache_id}")
+                    self.on_music_updated(music_cache_id)
+
+                # ==========================
                 
-                audio_data = recorder.record(numframes=frames_to_read)
-                # 更新最后读取时间
-                self.last_audio_read_time = time.perf_counter()
-                
-                # 只取最后一段最新的音频用于分析，丢弃之前的积压数据
-                playback_data = audio_data[-self.spectrum_analyzer.fft_size:]
-                
-                bucket_values = self.spectrum_analyzer.process_frame(playback_data)
-                if bucket_values is not None:
+                # 1. 准备背景图 (直接使用缓冲区 copyto，比重新分配内存快)
+                if self.img_content is not None:
                     try:
-                        # draw_spectrum 会直接修改 frame
-                        self.spectrum_analyzer.draw_spectrum(frame, bucket_values, self)
-                    except Exception as e:
-                        # print(f"Draw spectrum error: {e}") 
-                        pass # 避免刷屏
-
-            # 3. 绘制播放状态图标 (使用预计算索引优化，避免全图 Mask 计算)
-            is_playing = music_info.get("playback_status", 1) == 1
-            indices = None
-            pixels = None
-            
-            if is_playing:
-                indices = self.control_indices_playing
-                pixels = self.control_pixels_playing
-            else:
-                indices = self.control_indices_paused
-                pixels = self.control_pixels_paused
-            
-            if indices is not None and pixels is not None:
-                try:
-                        # 极速覆盖非透明像素
-                    frame[indices] = pixels
-                except Exception:
+                        # 确保尺寸一致
+                        if self.img_content.shape == self.frame_buffer.shape:
+                            np.copyto(self.frame_buffer, self.img_content)
+                        else:
+                            # 尺寸异常时重新创建 buffer
+                            self.frame_buffer = cv2.resize(self.img_content, (self.monitor_true_width, self.monitor_true_height))
+                    except Exception:
+                        self.frame_buffer.fill(0)
+                        
+                    frame = self.frame_buffer # 引用 buffer
+                else:
+                    self.frame_buffer.fill(0)
+                    frame = self.frame_buffer
+                
+                # 2. 绘制频谱
+                # 如果是 FakeSpectrumAnalyzer，则跳过频谱绘制
+                if self.spectrum_analyzer is None:
+                    # print("Using FakeSpectrumAnalyzer, skipping spectrum drawing")
                     pass
-            
-            # 4. 显示帧
-            cv2.imshow(self.window_name, frame)
+                else:
+                    # 计算需要读取的帧数，确保读取速度跟上实际流逝的时间，防止音频缓冲区积压导致延迟
+                    current_time = time.perf_counter()
+                    # 距离上次读取的实际时间
+                    elapsed = current_time - self.last_audio_read_time
+                    # 如果 elapsed 大于1秒，说明可能出现了积压，重新初始化 recorder_ins
+                    if elapsed > 1.0:
+                        self.recorder_ins.__exit__(None, None, None)
+                        self.recorder_ins = self.spectrum_analyzer.start_listening()
+                        recorder = self.recorder_ins.__enter__()
+                        elapsed = 0.033
+                        print("Checkpoint: Audio read lag detected, reinitializing audio stream to clear buffer")
+                    # 转换为样本数
+                    frames_to_read = int(elapsed * self.spectrum_analyzer.sample_rate)
+                    # 至少读取FFT窗口大小的数据
+                    frames_to_read = max(frames_to_read, self.spectrum_analyzer.fft_size)
+                    
+                    audio_data = recorder.record(numframes=frames_to_read)
+                    # 更新最后读取时间
+                    self.last_audio_read_time = time.perf_counter()
+                    
+                    # 只取最后一段最新的音频用于分析，丢弃之前的积压数据
+                    playback_data = audio_data[-self.spectrum_analyzer.fft_size:]
+                    
+                    bucket_values = self.spectrum_analyzer.process_frame(playback_data)
+                    if bucket_values is not None:
+                        try:
+                            # draw_spectrum 会直接修改 frame
+                            self.spectrum_analyzer.draw_spectrum(frame, bucket_values, self)
+                        except Exception as e:
+                            # print(f"Draw spectrum error: {e}") 
+                            pass # 避免刷屏
 
-            end_time = time.perf_counter()
-            process_time = int((end_time - start_time)*1000)
-            needwait_time = max(self.target_frame_duration - process_time, 1) # 确保至少等待1ms
+                # 3. 绘制播放状态图标 (使用预计算索引优化，避免全图 Mask 计算)
+                is_playing = music_info.get("playback_status", 1) == 1
+                indices = None
+                pixels = None
+                
+                if is_playing:
+                    indices = self.control_indices_playing
+                    pixels = self.control_pixels_playing
+                else:
+                    indices = self.control_indices_paused
+                    pixels = self.control_pixels_paused
+                
+                if indices is not None and pixels is not None:
+                    try:
+                            # 极速覆盖非透明像素
+                        frame[indices] = pixels
+                    except Exception:
+                        pass
+                
+                # 4. 显示帧
+                cv2.imshow(self.window_name, frame)
 
-            # 处理输入，降低等待时间
-            key = cv2.waitKey(needwait_time) & 0xFF
+                end_time = time.perf_counter()
+                process_time = int((end_time - start_time)*1000)
+                needwait_time = max(self.target_frame_duration - process_time, 1) # 确保至少等待1ms
+
+                # 处理输入，降低等待时间
+                key = cv2.waitKey(needwait_time) & 0xFF
+                
+                # 移除额外的 time.sleep(0.001)，因为 waitKey 已经提供了等待
+
+        except KeyboardInterrupt:
+            print("\nCtrl+C detected, stopping main loop...")
+            self.is_running = False
+        except Exception as e:
+            print(f"Error in main loop: {e}, {traceback.format_exc()}")
+
+        print("Main loop finished, cleaning up...")
+        
+        # 1. 停止监控器
+        if hasattr(self, 'music_monitor'):
+            print("Stopping music monitor...")
+            try:
+                self.music_monitor.stop_monitoring()
+            except Exception as e:
+                print(f"Error stopping monitor: {e}")
+
+        # 2. 关闭音频流
+        if self.recorder_ins is not None:
+            print("Closing audio stream...")
+            try:
+                self.recorder_ins.__exit__(None, None, None)
+            except Exception as e:
+                print(f"Error closing audio stream: {e}")
+            self.recorder_ins = None
+
+        # 3. 停止托盘图标
+        if hasattr(self, 'icon'):
+            print("Stop icon...")
+            try:
+                self.icon.stop()
+            except Exception as e:
+                print(f"Error stopping icon: {e}")
             
-            # 移除额外的 time.sleep(0.001)，因为 waitKey 已经提供了等待
+        time.sleep(1)
+
+        # 4. 销毁窗口
+        print("Destroying windows and exiting...")
+        try:
+            cv2.destroyWindow(self.window_name)
+        except Exception:
+            pass
+        cv2.waitKey(1)
+        print("Application quit")
+        os._exit(0)
