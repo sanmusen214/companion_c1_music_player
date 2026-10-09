@@ -49,6 +49,7 @@ class MusicInfoMonitor:
     def _run_process(self):
         """运行外部程序并捕获输出[7,8](@ref)"""
         try:
+            print(my_config.get("GetMusicStatus_position"))
             self.process = subprocess.Popen(
                 [my_config.get("GetMusicStatus_position"), "--platform", self.music_platform],
                 stdout=subprocess.PIPE,

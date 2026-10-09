@@ -22,8 +22,10 @@ COLOR_HIGH_LEVEL = (0, 0, 255)    # 高音量颜色 (红色)
 COLOR_INACTIVE_BLOCK = (40, 40, 40) # 未被点亮的块颜色
 
 # 音频处理参数
-# 每帧录音耗时约：1024/44100≈0.0231024/44100≈0.023 秒 (23ms)。
-SAMPLE_RATE = 44100        # 采样率 (Hz)
+# 每个 FFT 窗口覆盖约：1024/48000≈0.021 秒 (21ms)。
+# Windows 的共享模式和大多数蓝牙 A2DP 立体声端点使用 48 kHz。
+# 使用相同采样率可避免为了频谱分析而让 WASAPI 额外重采样。
+SAMPLE_RATE = 48000        # 采样率 (Hz)
 FFT_SIZE = 1024            # FFT窗口大小 (样本数), 越小刷新越快，但频率分辨率越低
 GAIN_FACTOR = 50.0         # 增益系数，用于调整视觉灵敏度 (根据系统音量调整)
 SMOOTHING_FACTOR = 0.5     # 平滑系数 (0.0 - 1.0), 越大越平滑，反应越慢
@@ -69,19 +71,42 @@ class SpectrumAnalyzer:
 
 
     def _get_loopback_mic(self):
+        """Return the loopback endpoint for the current default speaker.
+
+        Speaker names are not unique on Windows.  In particular, Bluetooth
+        devices often expose an A2DP stereo endpoint and an HFP hands-free
+        microphone with almost the same display name.  Fuzzy name matching
+        can therefore open the real headset microphone, which makes Windows
+        switch the headset to its low-bandwidth call profile.  A render
+        endpoint and its WASAPI loopback endpoint share the same endpoint ID,
+        so match that ID exactly and never fall back to a physical mic.
+        """
         try:
             default_speaker = sc.default_speaker()
-            print(f"detect Loopback device successfully")
-            return sc.get_microphone(id=str(default_speaker.name), include_loopback=True)
-        except Exception:
+            if default_speaker is None:
+                return None
+
+            speaker_id = str(default_speaker.id)
+
+            # Fast path for SoundCard versions that accept a WASAPI endpoint
+            # ID.  Validate the result as an extra guard against API changes.
             try:
-                mics = sc.all_microphones(include_loopback=True)
-                for m in mics:
-                    if m.isloopback:
-                        print(f"exception fallback: find Loopback device")
-                        return m
+                mic = sc.get_microphone(id=speaker_id, include_loopback=True)
+                if mic.isloopback and str(mic.id).casefold() == speaker_id.casefold():
+                    print(f"Using system-audio loopback: {mic.name}")
+                    return mic
             except Exception:
                 pass
+
+            # Some older SoundCard releases do not resolve the ID directly.
+            # Enumerate loopbacks, but still require the exact render ID.
+            for mic in sc.all_microphones(include_loopback=True):
+                if (mic.isloopback and
+                        str(mic.id).casefold() == speaker_id.casefold()):
+                    print(f"Using system-audio loopback: {mic.name}")
+                    return mic
+        except Exception as exc:
+            print(f"Could not select the default speaker loopback: {exc}")
         return None
 
     def start_listening(self):
